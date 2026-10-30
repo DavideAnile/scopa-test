@@ -1,0 +1,12 @@
+# Render Blueprint: server di gioco + versione web dell'app, su un unico servizio gratuito.
+# Su render.com: New → Blueprint → scegli questo repository.
+services:
+  - type: web
+    name: scopa
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci && npx expo export --platform web --output-dir dist-web
+    startCommand: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/index.ts
+    healthCheckPath: /
+    autoDeploy: true
