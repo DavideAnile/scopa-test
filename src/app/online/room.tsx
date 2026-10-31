@@ -13,13 +13,42 @@ import { ERROR_TEXT, type OnlineState, inviteLink, online, useOnline } from '@/o
 import { type Card, type Pair, type PlayerView, other } from '@scopa';
 import type { RoomInfo } from '@server/protocol';
 
+const INVITE_TEXT = 'Giochiamo a scopa! 🃏 Apri il link con Safari, scegli il tuo nome e tocca Entra.';
+
+type InviteResult = 'shared' | 'copied' | 'manual';
+
 /** Tutto quello che serve all'amico in un solo messaggio: si gioca da Safari, niente da installare. */
-function invite(code: string) {
+async function invite(code: string): Promise<InviteResult> {
   const link = inviteLink(code);
-  if (!link) return Share.share({ message: `Giochiamo a scopa! 🃏 Entra con il codice ${code}` });
-  const text = 'Giochiamo a scopa! 🃏 Apri il link con Safari, scegli il tuo nome e tocca Entra.';
-  // Su iOS il link passato come `url` diventa un link vero (cliccabile in WhatsApp/iMessage).
-  return Platform.OS === 'ios' ? Share.share({ message: text, url: link }) : Share.share({ message: `${text}\n${link}` });
+  const message = link ? `${INVITE_TEXT}\n${link}` : `Giochiamo a scopa! 🃏 Entra con il codice ${code}`;
+
+  if (Platform.OS !== 'web') {
+    try {
+      // Su iOS il link passato come `url` diventa un link vero (cliccabile in WhatsApp/iMessage).
+      if (Platform.OS === 'ios' && link) await Share.share({ message: INVITE_TEXT, url: link });
+      else await Share.share({ message });
+    } catch {
+      // Condivisione annullata o non riuscita: il link resta comunque visibile sullo schermo.
+    }
+    return 'shared';
+  }
+
+  // Sul web il foglio di condivisione c'è solo su alcuni browser (Safari sì, Chrome per Mac spesso no):
+  // altrimenti si copia il messaggio negli appunti.
+  if (typeof navigator.share === 'function') {
+    try {
+      await navigator.share(link ? { text: INVITE_TEXT, url: link } : { text: message });
+      return 'shared';
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return 'shared';
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(message);
+    return 'copied';
+  } catch {
+    return 'manual';
+  }
 }
 
 const leaveAndGoBack = () => {
@@ -55,17 +84,29 @@ export default function RoomScreen() {
     );
   }
 
-  if (!view) {
-    return (
-      <Message title="In attesa dell'amico" text="Mandagli l'invito: gli basta aprire il link con Safari. Il codice della partita è:">
-        <Text style={styles.code}>{room.code}</Text>
-        <MenuButton label="Invita un amico" onPress={() => invite(room.code).catch(() => {})} />
-        <MenuButton label="Annulla" variant="outline" onPress={leaveAndGoBack} />
-      </Message>
-    );
-  }
+  if (!view) return <WaitingRoom room={room} />;
 
   return <OnlineGame room={room} view={view} state={state} />;
+}
+
+function WaitingRoom({ room }: { room: RoomInfo }) {
+  const [result, setResult] = useState<InviteResult | null>(null);
+  const link = inviteLink(room.code);
+
+  return (
+    <Message title="In attesa dell'amico" text="Mandagli l'invito: gli basta aprire il link con Safari. Il codice della partita è:">
+      <Text style={styles.code}>{room.code}</Text>
+      <MenuButton label="Invita un amico" onPress={() => invite(room.code).then(setResult)} />
+      {result === 'copied' && <Text style={styles.feedback}>✓ Link copiato: incollalo in WhatsApp o nei messaggi</Text>}
+      {result === 'manual' && <Text style={styles.feedback}>Copia il link qui sotto e mandalo al tuo amico</Text>}
+      {link && (
+        <Text selectable style={styles.link}>
+          {link}
+        </Text>
+      )}
+      <MenuButton label="Annulla" variant="outline" onPress={leaveAndGoBack} />
+    </Message>
+  );
 }
 
 function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; state: OnlineState }) {
@@ -153,4 +194,6 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.three,
   },
   actions: { gap: Spacing.two, alignItems: 'stretch' },
+  feedback: { color: Table.accent, fontSize: 15, fontWeight: 700, textAlign: 'center' },
+  link: { color: Table.feltTextMuted, fontSize: 13, textAlign: 'center', paddingVertical: Spacing.one },
 });
