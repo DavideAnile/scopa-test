@@ -79,4 +79,4 @@ Altri comandi:
 - Punti: carte, denari, settebello, primiera (7=21, 6=18, A=16, 5=15, 4=14, 3=13, 2=12, figure=10) e scope. In caso di parità il punto non va a nessuno.
 - Si gioca una **serie di 10 o 15 partite**. Una partita è una smazzata: si giocano tutte le 40 carte e la vince chi fa più punti (a punti pari è pareggio).
 - A fine partita c'è il riepilogo: la successiva parte quando **entrambi** premono **Continua**. Vince la serie chi ha vinto più partite.
-- Se una partita la vince il giocatore "Davide", sugli schermi di tutti e due compare "Amore sei scarsa ma ti amo lo stesso" 💕.
+- Se una partita la vince il giocatore "Davide", sugli schermi di tutti e due compare uno di tre messaggi d'amore, scelto a caso ma uguale per entrambi (vedi `src/game/love.ts`).

@@ -2,11 +2,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { Table } from '@/constants/theme';
+import { isLoveName, pickLoveMessage } from '@/game/love';
 import type { Pair, PlayerView } from '@scopa';
-
-/** Quando la partita la vince Davide, compare questo messaggio a entrambi i giocatori. */
-const LOVE_NAME = 'davide';
-const LOVE_MESSAGE = 'Amore sei scarsa ma ti amo lo stesso';
 
 type Props = {
   visible: boolean;
@@ -44,7 +41,7 @@ export function RoundSummary({ visible, view, names, onContinue, onRematch, onEx
     else title = `${names[view.winner]} vince la serie`;
   }
 
-  const love = roundWinner !== null && names[roundWinner].trim().toLowerCase() === LOVE_NAME;
+  const love = roundWinner !== null && isLoveName(names[roundWinner]) ? pickLoveMessage(view.moveNo, view.roundNo) : null;
 
   const rows: [string, string, string][] = [
     ['Carte', `${stats[0].cards} ${mark(winners.cards === 0)}`, `${stats[1].cards} ${mark(winners.cards === 1)}`],
@@ -67,7 +64,7 @@ export function RoundSummary({ visible, view, names, onContinue, onRematch, onEx
 
           {love && (
             <Animated.View entering={ZoomIn.springify().damping(10)} style={styles.love}>
-              <Text style={styles.loveText}>💕 {LOVE_MESSAGE} 💕</Text>
+              <Text style={styles.loveText}>{love}</Text>
             </Animated.View>
           )}
 
