@@ -131,7 +131,7 @@ export default function OnlineHomeScreen() {
             onSubmitEditing={join}
             returnKeyType="go"
           />
-          <MenuButton label="Entra" style={styles.grow} onPress={join} disabled={!cleanName || code.length !== 4} />
+          <MenuButton label="Entra" style={styles.enter} onPress={join} disabled={!cleanName || code.length !== 4} />
         </View>
       </View>
 
@@ -193,5 +193,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 17,
   },
-  codeInput: { flex: 1, letterSpacing: 6, fontWeight: 800, textAlign: 'center' },
+  // minWidth 0: sul web il campo è un <input> con una larghezza minima propria che spingerebbe fuori "Entra".
+  codeInput: { flex: 1, minWidth: 0, letterSpacing: 6, fontWeight: 800, textAlign: 'center' },
+  enter: { paddingHorizontal: Spacing.four },
 });
