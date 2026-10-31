@@ -25,8 +25,10 @@ Prima volta:
 
 Aggiornare: ogni `git push` su `main` ripubblica il sito da solo.
 
+Tenerlo sempre sveglio (gratis): su [uptimerobot.com](https://uptimerobot.com) crea un account, poi **Add New Monitor** → tipo **HTTP(s)**, URL `https://<nome>.onrender.com/healthz`, intervallo **5 minuti**. Le 750 ore gratuite al mese di Render bastano per tenerlo acceso giorno e notte.
+
 Limiti del piano gratuito:
-- dopo 15 minuti senza giocatori il server si addormenta, e la prima apertura richiede circa 1 minuto (compare "Caricamento…");
+- senza il ping di UptimeRobot, dopo 15 minuti senza giocatori il server si addormenta e la prima apertura richiede circa 1 minuto (l'app mostra "Sto svegliando il server…" con i secondi);
 - lo storico si azzera quando il server si riavvia o si addormenta;
 - se Render riavvia il server durante una partita (capita di rado), quella partita si perde.
 

@@ -7,6 +7,7 @@ import { MenuButton } from '@/components/menu-button';
 import { MaxContentWidth, Spacing, Table } from '@/constants/theme';
 import { GAME_SERVER, online, useOnline } from '@/online/client';
 import { type Identity, loadIdentity, saveIdentity } from '@/online/identity';
+import { useWaitingText } from '@/online/use-waiting-text';
 
 const STATUS_TEXT = {
   idle: 'Non collegato',
@@ -16,7 +17,8 @@ const STATUS_TEXT = {
 } as const;
 
 export default function OnlineHomeScreen() {
-  const { status, room } = useOnline();
+  const { status, room, waitingSince } = useOnline();
+  const waitingText = useWaitingText(waitingSince);
   // Il link d'invito (…/online?code=ABCD) precompila il codice.
   const params = useLocalSearchParams<{ code?: string }>();
   const [identity, setIdentity] = useState<Identity | null>(null);
@@ -85,6 +87,7 @@ export default function OnlineHomeScreen() {
         </View>
       </View>
       <Text style={styles.title}>Gioca con un amico</Text>
+      {waitingText && <Text style={styles.waiting}>{waitingText}</Text>}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Il tuo nome</Text>
@@ -168,6 +171,14 @@ const styles = StyleSheet.create({
   dotOnline: { backgroundColor: '#46C46E' },
   statusText: { color: Table.feltTextMuted, fontSize: 13 },
   title: { color: Table.accent, fontSize: 32, fontWeight: 900 },
+  waiting: {
+    color: Table.accent,
+    fontSize: 15,
+    fontWeight: 700,
+    backgroundColor: '#00000030',
+    borderRadius: 12,
+    padding: Spacing.three,
+  },
   section: { gap: Spacing.two, backgroundColor: Table.feltDark, borderRadius: 16, padding: Spacing.three },
   sectionTitle: { color: Table.feltText, fontSize: 18, fontWeight: 700 },
   text: { color: Table.feltTextMuted, fontSize: 14, lineHeight: 20 },

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Spacing, Table } from '@/constants/theme';
 import { online, useOnline } from '@/online/client';
+import { useWaitingText } from '@/online/use-waiting-text';
 import type { HistoryEntry } from '@server/protocol';
 
 interface Row {
@@ -20,7 +21,8 @@ const BADGE = { won: 'V', lost: 'S', draw: 'P' } as const;
 const dateFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export default function HistoryScreen() {
-  const { history, status } = useOnline();
+  const { history, status, waitingSince } = useOnline();
+  const waitingText = useWaitingText(waitingSince);
 
   useEffect(() => {
     online.send({ t: 'history' });
@@ -61,7 +63,7 @@ export default function HistoryScreen() {
           {history === null && (
             <View style={styles.center}>
               <ActivityIndicator color={Table.accent} />
-              <Text style={styles.muted}>{status === 'online' ? 'Carico…' : 'Connessione al server…'}</Text>
+              <Text style={styles.muted}>{status === 'online' ? 'Carico…' : (waitingText ?? 'Connessione al server…')}</Text>
             </View>
           )}
           {history?.length === 0 && <Text style={styles.muted}>Nessuna partita finita, per ora.</Text>}

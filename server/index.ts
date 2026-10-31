@@ -76,6 +76,13 @@ const http = createServer((req, res) => {
     return;
   }
 
+  // Controllo leggero per Render e per il ping che tiene sveglio il server (UptimeRobot).
+  if (req.url === '/healthz') {
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+    res.end('ok');
+    return;
+  }
+
   let path = '/';
   try {
     path = decodeURIComponent(new URL(req.url ?? '/', 'http://x').pathname);

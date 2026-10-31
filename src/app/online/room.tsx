@@ -10,6 +10,7 @@ import { RoundSummary } from '@/components/round-summary';
 import { Spacing, Table } from '@/constants/theme';
 import { useTableScene } from '@/game/use-table-scene';
 import { ERROR_TEXT, type OnlineState, inviteLink, online, useOnline } from '@/online/client';
+import { useWaitingText } from '@/online/use-waiting-text';
 import { type Card, type Pair, type PlayerView, other } from '@scopa';
 import type { RoomInfo } from '@server/protocol';
 
@@ -59,6 +60,7 @@ const leaveAndGoBack = () => {
 export default function RoomScreen() {
   const state = useOnline();
   const { room, view, error, closedByOpponent } = state;
+  const waitingText = useWaitingText(state.waitingSince);
 
   if (closedByOpponent) {
     return (
@@ -77,7 +79,9 @@ export default function RoomScreen() {
       );
     }
     return (
-      <Message title="Un attimo…" text={state.status === 'online' ? 'Preparo la partita' : 'Connessione al server'}>
+      <Message
+        title="Un attimo…"
+        text={state.status === 'online' ? 'Preparo la partita' : (waitingText ?? 'Connessione al server')}>
         <ActivityIndicator color={Table.accent} size="large" />
         <MenuButton label="Annulla" variant="outline" onPress={leaveAndGoBack} />
       </Message>
@@ -111,6 +115,7 @@ function WaitingRoom({ room }: { room: RoomInfo }) {
 
 function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; state: OnlineState }) {
   const { scene, shown, busy } = useTableScene(view);
+  const waitingText = useWaitingText(state.waitingSince);
   // Mossa inviata e non ancora confermata dal server: niente altri tocchi.
   const [sentFor, setSentFor] = useState<number | null>(null);
   const pending = sentFor === view.moveNo;
@@ -133,7 +138,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
   };
 
   let notice: string | null = null;
-  if (state.status !== 'online') notice = 'Connessione persa, mi riconnetto…';
+  if (state.status !== 'online') notice = waitingText ?? 'Connessione persa, mi riconnetto…';
   else if (!room.connected[opp]) notice = `${names[opp]} si è disconnesso, aspetta che torni…`;
 
   // A fine partita si riparte quando entrambi premono "Continua" (o "Rivincita" a fine serie).

@@ -36,6 +36,8 @@ export interface OnlineState {
   error: { code: ErrorCode; at: number } | null;
   /** La stanza è stata chiusa dall'avversario. */
   closedByOpponent: boolean;
+  /** Da quando si sta aspettando il server (null se collegati). Su Render può dormire ~1 minuto. */
+  waitingSince: number | null;
 }
 
 const INITIAL: OnlineState = {
@@ -46,6 +48,7 @@ const INITIAL: OnlineState = {
   history: null,
   error: null,
   closedByOpponent: false,
+  waitingSince: null,
 };
 
 /** Connessione al server con riconnessione automatica. Store esterno per useSyncExternalStore. */
@@ -94,13 +97,13 @@ class OnlineClient {
 
   private open() {
     if (!GAME_SERVER || !this.hello) return;
-    this.set({ status: 'connecting' });
+    this.set({ status: 'connecting', waitingSince: this.state.waitingSince ?? Date.now() });
     const ws = new WebSocket(GAME_SERVER);
     this.ws = ws;
 
     ws.onopen = () => {
       this.retry = 0;
-      this.set({ status: 'online' });
+      this.set({ status: 'online', waitingSince: null });
       ws.send(JSON.stringify(this.hello));
       for (const msg of this.queue.splice(0)) ws.send(JSON.stringify(msg));
     };
@@ -114,8 +117,8 @@ class OnlineClient {
     ws.onclose = () => {
       if (this.ws !== ws) return;
       this.ws = null;
-      this.set({ status: 'offline' });
-      // Riprova con attesa crescente (max 5 s): il tunnel può impiegare qualche secondo ad attivarsi.
+      this.set({ status: 'offline', waitingSince: this.state.waitingSince ?? Date.now() });
+      // Riprova con attesa crescente (max 5 s): il server può impiegare un po' a svegliarsi.
       const delay = Math.min(5000, 500 * 2 ** this.retry++);
       if (this.retryTimer) clearTimeout(this.retryTimer);
       this.retryTimer = setTimeout(() => this.open(), delay);
