@@ -10,8 +10,8 @@ import type { ChatMessage, ClientMsg, ErrorCode, HistoryEntry, RoomInfo, ServerM
  * servita dal server di gioco stesso, quindi l'indirizzo è quello della pagina.
  */
 function resolveGameServer(): string | null {
-  const fromConfig = Constants.expoConfig?.extra?.gameServer as string | null | undefined;
-  if (fromConfig) return fromConfig;
+  const fromConfig: unknown = Constants.expoConfig?.extra?.gameServer;
+  if (typeof fromConfig === 'string' && fromConfig.length > 0) return fromConfig;
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const { protocol, host } = window.location;
     return `${protocol === 'https:' ? 'wss' : 'ws'}://${host}`;
