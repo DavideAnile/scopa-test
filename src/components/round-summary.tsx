@@ -2,7 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { Table } from '@/constants/theme';
-import { isLoveName, pickLoveMessage } from '@/game/love';
+import { loveMessageFor } from '@/game/love';
 import type { Pair, PlayerView } from '@scopa';
 
 type Props = {
@@ -41,7 +41,7 @@ export function RoundSummary({ visible, view, names, onContinue, onRematch, onEx
     else title = `${names[view.winner]} vince la serie`;
   }
 
-  const love = roundWinner !== null && isLoveName(names[roundWinner]) ? pickLoveMessage(view.moveNo, view.roundNo) : null;
+  const love = loveMessageFor(names, roundWinner, view.moveNo, view.roundNo);
 
   const rows: [string, string, string][] = [
     ['Carte', `${stats[0].cards} ${mark(winners.cards === 0)}`, `${stats[1].cards} ${mark(winners.cards === 1)}`],
