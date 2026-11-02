@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
+  FadeIn,
   FadeOut,
   ZoomIn,
   interpolate,
@@ -15,7 +16,7 @@ import { CardBack, CardFace, cardBox } from '@/components/playing-card';
 import { CARD_ASPECT } from '@/constants/card-images';
 import { Table } from '@/constants/theme';
 import type { PileInfo, Scene, Spot, Sprite } from '@/game/scene';
-import { type Card, type PlayerIndex, other } from '@scopa';
+import { type Card, type Pair, type PlayerIndex, other } from '@scopa';
 
 const OPP_SCALE = 0.62;
 const PILE_SCALE = 0.6;
@@ -23,6 +24,13 @@ const DECK_SCALE = 0.6;
 const PAD = 12;
 const GAP = 8;
 const EASING = Easing.bezier(0.25, 0.8, 0.25, 1);
+/** Quanto resta visibile il messaggio della chat accanto al nome. */
+const BUBBLE_MS = 3000;
+
+export interface Bubble {
+  id: number;
+  text: string;
+}
 
 interface Place {
   x: number; // centro
@@ -134,9 +142,11 @@ type Props = {
   onPressCard?: (card: Card) => void;
   highlighted?: readonly Card[];
   names: [string, string];
+  /** Ultimo messaggio della chat di ciascun giocatore (indicizzato per giocatore). */
+  bubbles?: Pair<Bubble | null>;
 };
 
-export function Board({ scene, onPressCard, highlighted, names }: Props) {
+export function Board({ scene, onPressCard, highlighted, names, bubbles }: Props) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -168,6 +178,10 @@ export function Board({ scene, onPressCard, highlighted, names }: Props) {
               onPress={sprite.card && onPressCard ? () => onPressCard(sprite.card!) : undefined}
             />
           ))}
+          {([opp, me] as const).map((p) => {
+            const bubble = bubbles?.[p];
+            return bubble ? <PileBubble key={p} layout={layout} mine={p === me} name={names[p]} bubble={bubble} /> : null;
+          })}
           {scene.banner && (
             <Animated.View
               key={scene.banner.key}
@@ -306,6 +320,47 @@ function Pile({ layout, pile, mine, name }: { layout: Layout; pile: PileInfo; mi
   );
 }
 
+/**
+ * Messaggio della chat accanto al nome, sopra le carte. Ricalca la posizione dell'etichetta del
+ * mazzetto: il nome invisibile fa da segnaposto, così la nuvoletta parte subito dopo il nome.
+ */
+function PileBubble({ layout, mine, name, bubble }: { layout: Layout; mine: boolean; name: string; bubble: Bubble }) {
+  const p = pilePlace(layout, mine);
+  const w = layout.cardW * PILE_SCALE;
+  const h = w * CARD_ASPECT;
+  const left = p.x - w / 2 - 8;
+  return (
+    <View style={[styles.static, styles.bubbleLayer, { left: p.x - w / 2, top: p.y - h / 2, width: w, height: h }]} pointerEvents="none">
+      {/* Larghezza esplicita: senza, la riga prenderebbe quella del mazzetto e il testo andrebbe a capo. */}
+      <View style={[styles.bubbleRow, mine ? { bottom: h + 6 } : { top: h + 6 }, { width: layout.w - left - PAD }]}>
+        <View style={styles.spacer}>
+          <Text style={styles.pileName} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text style={styles.pileCount}>0</Text>
+        </View>
+        <SpeechBubble key={bubble.id} text={bubble.text} />
+      </View>
+    </View>
+  );
+}
+
+function SpeechBubble({ text }: { text: string }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), BUBBLE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!visible) return null;
+  return (
+    <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(300)} style={styles.bubble}>
+      <Text style={styles.bubbleText} numberOfLines={3}>
+        {text}
+      </Text>
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
   board: { flex: 1 },
   tableFelt: {
@@ -322,6 +377,23 @@ const styles = StyleSheet.create({
   pileLabel: { position: 'absolute', left: -8, width: 90, gap: 1 },
   pileName: { color: Table.feltText, fontSize: 12, fontWeight: 700 },
   pileCount: { color: Table.accent, fontSize: 12, fontWeight: 800 },
+  bubbleLayer: { zIndex: 950 },
+  bubbleRow: { position: 'absolute', left: -8, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  spacer: { opacity: 0, gap: 1 },
+  bubble: {
+    flexShrink: 1,
+    maxWidth: 220,
+    backgroundColor: Table.cardFace,
+    borderRadius: 14,
+    borderTopLeftRadius: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  bubbleText: { color: '#2B2100', fontSize: 14, fontWeight: 600 },
   bannerWrap: { position: 'absolute', left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   banner: {
     color: Table.accent,

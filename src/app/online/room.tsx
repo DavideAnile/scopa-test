@@ -3,6 +3,7 @@ import { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Bubble } from '@/components/board';
 import { ChatPanel } from '@/components/chat-panel';
 import { GameTable } from '@/components/game-table';
 import { MenuButton } from '@/components/menu-button';
@@ -11,7 +12,7 @@ import { Spacing, Table } from '@/constants/theme';
 import { useTableScene } from '@/game/use-table-scene';
 import { ERROR_TEXT, type OnlineState, inviteLink, online, useOnline } from '@/online/client';
 import { useWaitingText } from '@/online/use-waiting-text';
-import { type Card, type Pair, type PlayerView, other } from '@scopa';
+import { type Card, type Pair, type PlayerIndex, type PlayerView, other } from '@scopa';
 import type { RoomInfo } from '@server/protocol';
 
 const INVITE_TEXT = 'Giochiamo a scopa! 🃏 Apri il link con Safari, scegli il tuo nome e tocca Entra.';
@@ -120,6 +121,19 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
   const [sentFor, setSentFor] = useState<number | null>(null);
   const pending = sentFor === view.moveNo;
 
+  // Nuvolette accanto ai nomi: solo i messaggi arrivati da quando il tavolo è aperto
+  // (rientrando in partita i messaggi vecchi non ricompaiono).
+  const [firstChatId] = useState(() => state.chat.at(-1)?.id ?? 0);
+  const bubbleOf = (player: PlayerIndex): Bubble | null => {
+    for (let i = state.chat.length - 1; i >= 0; i--) {
+      const m = state.chat[i];
+      if (m.id <= firstChatId) break;
+      if (m.from === player && m.text.length > 0) return { id: m.id, text: m.text };
+    }
+    return null;
+  };
+  const bubbles: Pair<Bubble | null> = [bubbleOf(0), bubbleOf(1)];
+
   const me = room.you;
   const opp = other(me);
   const names: Pair<string> = [room.names[0] ?? '…', room.names[1] ?? '…'];
@@ -158,6 +172,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
         onPlay={play}
         onExit={exit}
         notice={notice}
+        bubbles={bubbles}
         headerRight={<ChatPanel messages={state.chat} you={me} onSend={(text) => online.send({ t: 'chat', text })} />}
       />
       <RoundSummary

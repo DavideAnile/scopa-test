@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Board } from '@/components/board';
+import { Board, type Bubble } from '@/components/board';
 import { Table } from '@/constants/theme';
 import type { Scene } from '@/game/scene';
 import { type Card, type Pair, type PlayerView, bestCapture, legalCaptures, matchCapture, other } from '@scopa';
@@ -22,9 +22,11 @@ type Props = {
   headerRight?: ReactNode;
   /** Avviso sotto la barra in alto (es. avversario disconnesso). */
   notice?: string | null;
+  /** Messaggi della chat da mostrare per qualche secondo accanto ai nomi. */
+  bubbles?: Pair<Bubble | null>;
 };
 
-export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, headerRight, notice }: Props) {
+export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, headerRight, notice, bubbles }: Props) {
   const me = view.you;
   const opp = other(me);
   const myTurn = view.status === 'playing' && view.turn === me && !busy;
@@ -85,7 +87,7 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
           </View>
         )}
 
-        <Board scene={scene} names={[names[0], names[1]]} onPressCard={playCard} highlighted={chosen} />
+        <Board scene={scene} names={[names[0], names[1]]} onPressCard={playCard} highlighted={chosen} bubbles={bubbles} />
 
         <View style={styles.hintRow}>
           <Text style={[styles.hint, myTurn && styles.hintActive]}>{hint}</Text>
