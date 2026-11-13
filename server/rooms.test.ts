@@ -88,12 +88,20 @@ describe('stanze', () => {
     expect(pick(back, 'anna', 'chatLog')[0].messages).toHaveLength(0);
   });
 
-  it('sticker: arriva a entrambi, con testo vuoto', () => {
+  it('sticker: arriva a entrambi, con testo vuoto (se c\'è Davide)', () => {
     const { lobby } = setup();
+    lobby.connect('anna', 'Davide');
     startGame(lobby);
     const out = lobby.handle('anna', { t: 'chat', sticker: 'sticker-03' });
     expect(pick(out, 'bruno', 'chat')[0].message).toMatchObject({ from: 0, sticker: 'sticker-03', text: '' });
     expect(pick(out, 'anna', 'chat')).toHaveLength(1);
+  });
+
+  it('sticker rifiutati nelle partite senza nessun Davide', () => {
+    const { lobby } = setup();
+    startGame(lobby);
+    const out = lobby.handle('anna', { t: 'chat', sticker: 'sticker-03' });
+    expect(out).toEqual([{ to: 'anna', msg: { t: 'error', code: 'bad_message' } }]);
   });
 
   it('chat: arriva a entrambi', () => {

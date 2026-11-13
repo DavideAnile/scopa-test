@@ -56,17 +56,26 @@ export const CARD_ASPECT = 496 / 300;
 
 // Tenute in memoria finché il browser non le ha scaricate.
 const preloaded: HTMLImageElement[] = [];
+const requested = new Set<ImageAsset>();
 
 /**
  * Scarica subito tutte le 40 carte. Sul web (e su Expo Go via tunnel) le immagini arrivano dal Mac:
  * senza precaricarle, una carta che compare per la prima volta resta bianca finché non arriva.
  */
 export function preloadCardImages() {
-  // Anche gli sticker della chat, così compaiono subito quando arrivano.
-  const modules = [...Object.values(CARD_IMAGES), ...Object.values(STICKERS)];
+  preloadModules(Object.values(CARD_IMAGES));
+}
+
+/** Sticker della chat: si scaricano solo nelle partite in cui sono disponibili (c'è Davide). */
+export function preloadStickers() {
+  preloadModules(Object.values(STICKERS));
+}
+
+function preloadModules(modules: ImageAsset[]) {
   if (Platform.OS === 'web') {
-    if (preloaded.length > 0) return;
     for (const m of modules) {
+      if (requested.has(m)) continue;
+      requested.add(m);
       const img = new window.Image();
       img.src = Asset.fromModule(m).uri;
       preloaded.push(img);

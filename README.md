@@ -70,7 +70,7 @@ npm run stickers     # rigenera l'elenco in src/constants/stickers.ts
 git add -A && git commit -m "Nuovi sticker" && git push
 ```
 
-Nella chat si aprono con il pulsante **Sticker**. Nota: diventano file del sito, quindi chi ha il link del gioco può raggiungerli.
+Nella chat si aprono con il pulsante **Sticker**, che compare (e gli sticker vengono scaricati) solo nelle partite in cui uno dei due giocatori si chiama "Davide"; il server rifiuta gli sticker nelle altre. Non è una protezione vera: i file restano pubblicati sul sito e il nome non è verificato, quindi chi conosce gli indirizzi dei file o si chiama "Davide" può vederli.
 
 ## Struttura
 

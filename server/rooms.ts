@@ -13,7 +13,7 @@ import {
   playerView,
 } from '../supabase/functions/_shared/scopa/index.ts';
 
-import type { ChatMessage, ClientMsg, ErrorCode, HistoryEntry, RoomInfo, ServerMsg } from './protocol.ts';
+import { type ChatMessage, type ClientMsg, type ErrorCode, type HistoryEntry, type RoomInfo, type ServerMsg, stickersAllowed } from './protocol.ts';
 
 export interface Outgoing {
   to: string;
@@ -111,6 +111,7 @@ export class Lobby {
 
     switch (msg.t) {
       case 'chat': {
+        if (msg.sticker && !stickersAllowed(room.seats.map((s) => s?.name))) return this.error(playerId, 'bad_message');
         const message: ChatMessage = {
           id: ++this.chatId,
           from: seat,

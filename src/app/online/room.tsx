@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,13 +8,14 @@ import { ChatPanel } from '@/components/chat-panel';
 import { GameTable } from '@/components/game-table';
 import { MenuButton } from '@/components/menu-button';
 import { RoundSummary } from '@/components/round-summary';
+import { preloadStickers } from '@/constants/card-images';
 import { Spacing, Table } from '@/constants/theme';
 import { useTableScene } from '@/game/use-table-scene';
 import { ERROR_TEXT, type OnlineState, inviteLink, online, useOnline } from '@/online/client';
 import { useOpponentTyping } from '@/online/use-opponent-typing';
 import { useWaitingText } from '@/online/use-waiting-text';
 import { type Card, type Pair, type PlayerIndex, type PlayerView, other } from '@scopa';
-import type { RoomInfo } from '@server/protocol';
+import { type RoomInfo, stickersAllowed } from '@server/protocol';
 
 const INVITE_TEXT = 'Giochiamo a scopa! 🃏 Apri il link con Safari, scegli il tuo nome e tocca Entra.';
 
@@ -134,6 +135,12 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
     return null;
   };
   const opponentTyping = useOpponentTyping(state.opponentTypingAt);
+
+  // Sticker (foto personali) solo se uno dei due si chiama Davide: solo allora si scaricano.
+  const stickers = stickersAllowed(room.names);
+  useEffect(() => {
+    if (stickers) preloadStickers();
+  }, [stickers]);
   const bubbles: Pair<Bubble | null> = [bubbleOf(0), bubbleOf(1)];
   if (opponentTyping) bubbles[other(room.you)] = { id: -1, text: '', typing: true };
 
@@ -183,6 +190,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
             you={me}
             onSend={(text) => online.send({ t: 'chat', text })}
             onSendSticker={(sticker) => online.send({ t: 'chat', sticker })}
+            stickersEnabled={stickers}
             onTyping={(on) => online.setTyping(on)}
             typingName={opponentTyping ? names[opp] : null}
           />

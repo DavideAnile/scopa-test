@@ -6,6 +6,11 @@ import { type Card, type Pair, type PlayerIndex, type PlayerView, type SeriesLen
 export const MAX_CHAT_LENGTH = 500;
 const STICKER_ID = /^[a-z0-9-]{1,60}$/;
 
+/** Gli sticker (foto personali) sono disponibili solo nelle partite in cui uno dei due si chiama Davide. */
+export function stickersAllowed(names: readonly (string | null | undefined)[]): boolean {
+  return names.some((n) => n?.trim().toLowerCase() === 'davide');
+}
+
 export type ClientMsg =
   | { t: 'hello'; playerId: string; name: string }
   | { t: 'create'; series: SeriesLength }

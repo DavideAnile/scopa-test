@@ -27,13 +27,15 @@ type Props = {
   you: PlayerIndex;
   onSend: (text: string) => void;
   onSendSticker: (id: string) => void;
+  /** Sticker disponibili (solo se in partita c'è Davide). */
+  stickersEnabled: boolean;
   /** Avvisa che stai scrivendo (true) o hai smesso (false). */
   onTyping?: (on: boolean) => void;
   /** Nome dell'avversario se sta scrivendo adesso, altrimenti null. */
   typingName?: string | null;
 };
 
-export function ChatPanel({ messages, you, onSend, onSendSticker, onTyping, typingName }: Props) {
+export function ChatPanel({ messages, you, onSend, onSendSticker, stickersEnabled, onTyping, typingName }: Props) {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(0);
   const [draft, setDraft] = useState('');
@@ -141,12 +143,14 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, onTyping, typi
               ))}
             </ScrollView>
             <View style={styles.inputRow}>
-              <Pressable
-                onPress={() => setStickersOpen((v) => !v)}
-                accessibilityLabel="Sticker"
-                style={({ pressed }) => [styles.stickerBtn, stickersOpen && styles.stickerBtnOn, pressed && styles.pressed]}>
-                <Text style={[styles.stickerBtnText, stickersOpen && styles.stickerBtnTextOn]}>Sticker</Text>
-              </Pressable>
+              {stickersEnabled && (
+                <Pressable
+                  onPress={() => setStickersOpen((v) => !v)}
+                  accessibilityLabel="Sticker"
+                  style={({ pressed }) => [styles.stickerBtn, stickersOpen && styles.stickerBtnOn, pressed && styles.pressed]}>
+                  <Text style={[styles.stickerBtnText, stickersOpen && styles.stickerBtnTextOn]}>Sticker</Text>
+                </Pressable>
+              )}
               <TextInput
                 value={draft}
                 onChangeText={changeDraft}
@@ -165,7 +169,7 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, onTyping, typi
                 <Text style={styles.sendText}>Invia</Text>
               </Pressable>
             </View>
-            {stickersOpen && (
+            {stickersEnabled && stickersOpen && (
               <ScrollView style={styles.stickerPanel} contentContainerStyle={styles.stickerGrid}>
                 {STICKER_IDS.map((id) => (
                   <Pressable
