@@ -82,7 +82,7 @@ npm run stickers     # rigenera l'elenco degli id in src/constants/stickers.ts
 git add -A && git commit -m "Nuovi sticker" && git push
 ```
 
-Gli **avatar** accanto ai nomi sono sticker scelti per nome (`avatarFor` in `server/protocol.ts`: Davide → `sticker-15`, Giorgia → `sticker-12`) e seguono le stesse regole.
+Gli **avatar** accanto ai nomi sono sticker scelti per nome (`avatarFor` in `server/protocol.ts`: Davide → `sticker-15`, Giorgia → `sticker-12`) e seguono le stesse regole. Chi gioca contro Davide prende l'avatar di Giorgia con qualunque nome ("Gio", "gio"…), tranne il computer.
 
 ## Struttura
 

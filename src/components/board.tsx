@@ -195,8 +195,8 @@ export function Board({ scene, onPressCard, highlighted, names, bubbles, sticker
             ]}
           />
           <Deck layout={layout} count={scene.deckCount} mine={scene.dealer === me} />
-          <Pile layout={layout} pile={scene.piles[opp]} mine={false} name={names[opp]} avatar={stickerSrc(avatarFor(names[opp]))} />
-          <Pile layout={layout} pile={scene.piles[me]} mine name={names[me]} avatar={stickerSrc(avatarFor(names[me]))} />
+          <Pile layout={layout} pile={scene.piles[opp]} mine={false} name={names[opp]} avatar={stickerSrc(avatarFor(names[opp], names[me]))} />
+          <Pile layout={layout} pile={scene.piles[me]} mine name={names[me]} avatar={stickerSrc(avatarFor(names[me], names[opp]))} />
           {scene.sprites.map((sprite) => (
             <SpriteView
               key={sprite.id}
@@ -217,7 +217,7 @@ export function Board({ scene, onPressCard, highlighted, names, bubbles, sticker
                 mine={p === me}
                 name={names[p]}
                 bubble={bubble}
-                avatar={!!stickerSrc(avatarFor(names[p]))}
+                avatar={!!stickerSrc(avatarFor(names[p], names[p === me ? opp : me]))}
                 sticker={stickerSrc(bubble.sticker)}
               />
             ) : null;

@@ -10,11 +10,21 @@ const STICKER_ID = /^[a-z0-9-]{1,60}$/;
 
 /** Foto profilo (uno sticker) per nome, confrontato senza maiuscole né spazi. */
 const AVATARS: Record<string, string> = { davide: 'sticker-15', giorgia: 'sticker-12' };
-export const avatarFor = (name: string | null | undefined): string | null => AVATARS[name?.trim().toLowerCase() ?? ''] ?? null;
+const isDavide = (name: string | null | undefined) => name?.trim().toLowerCase() === 'davide';
+
+/** Nome dell'avversario nelle partite contro il computer (lui non prende avatar). */
+export const COMPUTER_NAME = 'Computer';
+
+/** Chi gioca contro Davide è Giorgia, qualunque nome usi ("Gio", "gio"…): prende il suo avatar. */
+export function avatarFor(name: string | null | undefined, opponent?: string | null): string | null {
+  const own = AVATARS[name?.trim().toLowerCase() ?? ''];
+  if (own) return own;
+  return name && name !== COMPUTER_NAME && isDavide(opponent) ? AVATARS.giorgia : null;
+}
 
 /** Gli sticker (foto personali) sono disponibili solo nelle partite in cui uno dei due si chiama Davide. */
 export function stickersAllowed(names: readonly (string | null | undefined)[]): boolean {
-  return names.some((n) => n?.trim().toLowerCase() === 'davide');
+  return names.some(isDavide);
 }
 
 export type ClientMsg =

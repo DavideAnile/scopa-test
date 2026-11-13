@@ -18,6 +18,7 @@ import {
   nextRound,
   playerView,
 } from '@scopa';
+import { COMPUTER_NAME } from '@server/protocol';
 
 const HUMAN: PlayerIndex = 0;
 const BOT: PlayerIndex = 1;
@@ -56,7 +57,7 @@ function LocalGame() {
   useEffect(() => {
     loadIdentity().then((id) => id.name && setMyName(id.name));
   }, []);
-  const names: Pair<string> = [myName, 'Computer'];
+  const names: Pair<string> = [myName, COMPUTER_NAME];
   // Avatar di Davide anche contro il computer, con il lasciapassare avuto dal login.
   const { stickerToken } = useOnline();
 

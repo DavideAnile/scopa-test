@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { avatarFor } from './protocol.ts';
+import { COMPUTER_NAME, avatarFor } from './protocol.ts';
 import { stickerFile, stickerToken, verifyStickerToken } from './stickers.ts';
 
 describe('lasciapassare degli sticker', () => {
@@ -33,5 +33,14 @@ describe('lasciapassare degli sticker', () => {
     expect(avatarFor('GIORGIA')).toBe('sticker-12');
     expect(avatarFor('Danilo')).toBeNull();
     expect(avatarFor(null)).toBeNull();
+  });
+
+  it("chi gioca contro Davide ha l'avatar di Giorgia", () => {
+    expect(avatarFor('Gio', 'Davide')).toBe('sticker-12');
+    expect(avatarFor('gio', ' davide ')).toBe('sticker-12');
+    expect(avatarFor('Davide', 'Gio')).toBe('sticker-15');
+    expect(avatarFor('Gio', 'Danilo')).toBeNull();
+    expect(avatarFor('', 'Davide')).toBeNull();
+    expect(avatarFor(COMPUTER_NAME, 'Davide')).toBeNull();
   });
 });
