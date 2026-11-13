@@ -131,6 +131,14 @@ export class Lobby {
         if (room.chat.length > MAX_CHAT) room.chat.shift();
         return this.toSeats(room, { t: 'chat', message });
       }
+      case 'react': {
+        const message = room.chat.find((m) => m.id === msg.id);
+        if (!message) return [];
+        const reactions: Pair<string | null> = message.reactions ? [...message.reactions] : [null, null];
+        reactions[seat] = msg.emoji;
+        message.reactions = reactions;
+        return this.toSeats(room, { t: 'reaction', id: message.id, reactions });
+      }
       case 'typing': {
         const opp = room.seats[other(seat)];
         return opp ? [{ to: opp.id, msg: { t: 'typing', from: seat, on: msg.on } }] : [];

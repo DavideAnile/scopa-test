@@ -31,6 +31,8 @@ export interface OnlineState {
   auth: 'loading' | 'in' | 'out';
   /** Lasciapassare per scaricare gli sticker (dal login o dalla stanza con Davide). */
   stickerToken: string | null;
+  /** Ultima reazione messa dall'avversario a un mio messaggio (`n` cresce a ogni nuova reazione). */
+  opponentReaction: { id: number; emoji: string; n: number } | null;
 }
 
 const INITIAL: OnlineState = {
@@ -45,6 +47,7 @@ const INITIAL: OnlineState = {
   opponentTypingAt: null,
   auth: 'loading',
   stickerToken: null,
+  opponentReaction: null,
 };
 
 /** Connessione al server con riconnessione automatica. Store esterno per useSyncExternalStore. */
@@ -174,6 +177,19 @@ class OnlineClient {
       }
       case 'typing':
         return this.set({ opponentTypingAt: msg.on ? Date.now() : null });
+      case 'reaction': {
+        const you = this.state.room?.you;
+        const old = this.state.chat.find((m) => m.id === msg.id);
+        const chat = this.state.chat.map((m) => (m.id === msg.id ? { ...m, reactions: msg.reactions } : m));
+        // L'avversario ha messo (non tolto) una reazione a un mio messaggio?
+        const opp = you === undefined ? null : you === 0 ? 1 : 0;
+        const emoji = opp === null ? null : msg.reactions[opp];
+        const isNew = old && old.from === you && emoji && emoji !== old.reactions?.[opp!];
+        return this.set({
+          chat,
+          ...(isNew ? { opponentReaction: { id: msg.id, emoji, n: (this.state.opponentReaction?.n ?? 0) + 1 } } : {}),
+        });
+      }
       case 'history':
         return this.set({ history: msg.games });
       case 'closed':

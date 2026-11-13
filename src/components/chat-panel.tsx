@@ -19,7 +19,7 @@ import { STICKER_IDS } from '@/constants/stickers';
 import { Table } from '@/constants/theme';
 import { stickerUri } from '@/online/stickers';
 import type { PlayerIndex } from '@scopa';
-import { type ChatMessage, MAX_CHAT_LENGTH } from '@server/protocol';
+import { type ChatMessage, MAX_CHAT_LENGTH, REACTIONS } from '@server/protocol';
 
 const QUICK = ['Ciao! 👋', 'Bella! 👏', 'Scopa! 🧹', 'Che fortuna 😅', 'Rivincita? 🔁', 'GG 🤝'];
 
@@ -34,9 +34,23 @@ type Props = {
   onTyping?: (on: boolean) => void;
   /** Nome dell'avversario se sta scrivendo adesso, altrimenti null. */
   typingName?: string | null;
+  /** Mette (o toglie, con null) la mia reazione a un messaggio. */
+  onReact: (id: number, emoji: string | null) => void;
+  /** Contatore delle reazioni dell'avversario ai miei messaggi (cresce a ogni nuova). */
+  opponentReactions: number;
 };
 
-export function ChatPanel({ messages, you, onSend, onSendSticker, stickerToken, onTyping, typingName }: Props) {
+export function ChatPanel({
+  messages,
+  you,
+  onSend,
+  onSendSticker,
+  stickerToken,
+  onTyping,
+  typingName,
+  onReact,
+  opponentReactions,
+}: Props) {
   const stickersEnabled = stickerToken !== null;
   const stickerSource = (id: string) => {
     const uri = stickerToken ? stickerUri(id, stickerToken) : null;
@@ -49,7 +63,26 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, stickerToken, 
   const [stickersOpen, setStickersOpen] = useState(false);
   const scroll = useRef<ScrollViewInstance>(null);
 
-  const unread = open ? 0 : messages.slice(seen).filter((m) => m.from !== you).length;
+  // Messaggio su cui si sta scegliendo la reazione (barretta delle emoji aperta).
+  const [reactingTo, setReactingTo] = useState<number | null>(null);
+  const [reactionsSeen, setReactionsSeen] = useState(opponentReactions);
+
+  const unread = open
+    ? 0
+    : messages.slice(seen).filter((m) => m.from !== you).length + (opponentReactions > reactionsSeen ? 1 : 0);
+
+  // Vibrazione quando l'avversario reagisce a un mio messaggio.
+  const reactionsRef = useRef(opponentReactions);
+  useEffect(() => {
+    if (opponentReactions === reactionsRef.current) return;
+    reactionsRef.current = opponentReactions;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [opponentReactions]);
+
+  const react = (id: number, emoji: string, current: string | null) => {
+    onReact(id, current === emoji ? null : emoji);
+    setReactingTo(null);
+  };
 
   // Vibrazione quando arriva un messaggio nuovo dell'avversario (non per quelli già presenti all'apertura).
   const last = messages.at(-1);
@@ -63,6 +96,8 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, stickerToken, 
   const close = () => {
     onTyping?.(false);
     setSeen(messages.length);
+    setReactionsSeen(opponentReactions);
+    setReactingTo(null);
     setOpen(false);
   };
 
@@ -113,26 +148,57 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, stickerToken, 
               style={styles.flex}
               contentContainerStyle={styles.list}
               onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}>
-              {messages.length === 0 && <Text style={styles.empty}>Nessun messaggio. Saluta il tuo avversario!</Text>}
+              {messages.length === 0 && (
+                <Text style={styles.empty}>
+                  Nessun messaggio. Saluta il tuo avversario!{'\n'}Tieni premuto un messaggio per reagire.
+                </Text>
+              )}
               {messages.map((m) => {
                 const mine = m.from === you;
-                if (m.sticker) {
-                  const source = stickerSource(m.sticker);
-                  return (
-                    <View key={m.id} style={[styles.stickerMsg, mine ? styles.alignEnd : styles.alignStart]}>
-                      {!mine && <Text style={styles.author}>{m.name}</Text>}
-                      {source ? (
-                        <Image source={source} style={styles.stickerImage} contentFit="contain" />
-                      ) : (
-                        <Text style={styles.text}>[sticker]</Text>
-                      )}
-                    </View>
-                  );
-                }
+                const myReaction = m.reactions?.[you] ?? null;
+                const shown = (m.reactions ?? []).filter((r): r is string => !!r);
+                const source = m.sticker ? stickerSource(m.sticker) : null;
                 return (
-                  <View key={m.id} style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
-                    {!mine && <Text style={styles.author}>{m.name}</Text>}
-                    <Text style={[styles.text, mine && styles.textMine]}>{m.text}</Text>
+                  <View key={m.id} style={[styles.msg, mine ? styles.alignEnd : styles.alignStart]}>
+                    {reactingTo === m.id && (
+                      <View style={styles.reactBar}>
+                        {REACTIONS.map((e) => (
+                          <Pressable
+                            key={e}
+                            onPress={() => react(m.id, e, myReaction)}
+                            accessibilityLabel={`Reagisci ${e}`}
+                            style={({ pressed }) => [styles.reactBtn, myReaction === e && styles.reactBtnOn, pressed && styles.pressed]}>
+                            <Text style={styles.reactEmoji}>{e}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                    <Pressable
+                      onLongPress={() => setReactingTo(m.id)}
+                      onPress={() => setReactingTo(null)}
+                      delayLongPress={350}
+                      accessibilityLabel={`Messaggio ${m.id}`}>
+                      {m.sticker ? (
+                        <View style={[styles.stickerMsg, mine ? styles.alignEnd : styles.alignStart]}>
+                          {!mine && <Text style={styles.author}>{m.name}</Text>}
+                          {source ? (
+                            <Image source={source} style={styles.stickerImage} contentFit="contain" />
+                          ) : (
+                            <Text style={styles.text}>[sticker]</Text>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+                          {!mine && <Text style={styles.author}>{m.name}</Text>}
+                          <Text style={[styles.text, mine && styles.textMine]}>{m.text}</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                    {shown.length > 0 && (
+                      <View style={styles.reactions}>
+                        <Text style={styles.reactionsText}>{shown.join(' ')}</Text>
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -225,9 +291,33 @@ const styles = StyleSheet.create({
   typing: { color: Table.accent, fontSize: 13, fontStyle: 'italic', marginTop: 2 },
   list: { padding: 16, gap: 8 },
   empty: { color: Table.feltTextMuted, textAlign: 'center', marginTop: 24 },
-  bubble: { maxWidth: '80%', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12 },
-  mine: { alignSelf: 'flex-end', backgroundColor: Table.accent, borderBottomRightRadius: 4 },
-  theirs: { alignSelf: 'flex-start', backgroundColor: Table.felt, borderBottomLeftRadius: 4 },
+  msg: { maxWidth: '80%', gap: 2 },
+  bubble: { borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12 },
+  reactBar: {
+    flexDirection: 'row',
+    gap: 2,
+    backgroundColor: Table.cardFace,
+    borderRadius: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    marginBottom: 4,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+  },
+  reactBtn: { borderRadius: 16, paddingHorizontal: 5, paddingVertical: 2 },
+  reactBtnOn: { backgroundColor: '#F5C54266' },
+  reactEmoji: { fontSize: 24 },
+  reactions: {
+    marginTop: -6,
+    backgroundColor: Table.feltDark,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFFFFF30',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  reactionsText: { fontSize: 13 },
+  mine: { backgroundColor: Table.accent, borderBottomRightRadius: 4 },
+  theirs: { backgroundColor: Table.felt, borderBottomLeftRadius: 4 },
   author: { color: Table.accent, fontSize: 12, fontWeight: 700, marginBottom: 2 },
   text: { color: Table.feltText, fontSize: 16 },
   textMine: { color: '#2B2100' },

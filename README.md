@@ -98,7 +98,7 @@ Gli **avatar** accanto ai nomi sono sticker scelti per nome (`avatarFor` in `ser
 
 - Mazzo napoletano da 40 carte. Si danno 3 carte a testa e 4 in tavola; inizia chi non ha distribuito.
 - Se in tavola c'è una carta dello stesso valore, si è obbligati a prendere quella. Altrimenti si prende per somma. Se ci sono più prese possibili (es. un 9 con 7+2 o 5+4) compare un riquadro per scegliere; in alternativa si possono toccare prima le carte del tavolo da prendere.
-- Quando qualcuno prende il 7 di denari compare "SETTEBELLO!" (insieme a "SCOPA!" se è anche scopa).
+- Quando qualcuno prende il 7 di denari compare "SETTEBELLO!" (insieme a "SCOPA!" se è anche scopa), con scintille dorate attorno alla carta. Con una scopa, una 🧹 spazza il tavolo (`src/components/table-effects.tsx`).
 - Scopa quando si svuota il tavolo, tranne con l'ultima giocata della smazzata.
 - A fine smazzata le carte rimaste in tavola vanno all'ultimo che ha preso.
 - Punti: carte, denari, settebello, primiera (7=21, 6=18, A=16, 5=15, 4=14, 3=13, 2=12, figure=10) e scope. In caso di parità il punto non va a nessuno.
@@ -106,5 +106,6 @@ Gli **avatar** accanto ai nomi sono sticker scelti per nome (`avatarFor` in `ser
 - Una partita finita in **pareggio non conta**: compare "Partita finita in pareggio, non viene contata!" e la serie va avanti finché non ci sono 10 partite decise.
 - La serie si **chiude in anticipo** quando chi è indietro non può più nemmeno pareggiare (es. 6–0: anche vincendo le 4 rimaste si arriverebbe a 6–4).
 - In chat, quando l'avversario sta scrivendo compare "sta scrivendo…" accanto al suo nome e nella riga in basso.
+- Tenendo premuto un messaggio della chat si può reagire con ❤️ 😂 😮 😢 👍 🔥 (una reazione a testa; toccare di nuovo la stessa la toglie).
 - A fine partita c'è il riepilogo: la successiva parte quando **entrambi** premono **Continua**. Vince la serie chi ha vinto più partite.
 - Se una partita la vince il giocatore "Davide" compare uno di 3 messaggi d'amore; se la perde, uno di altri 5. Il messaggio è scelto a caso ma è uguale sui due schermi; con un pareggio o senza nessun "Davide" non compare niente (vedi `src/game/love.ts`).

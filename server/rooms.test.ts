@@ -118,6 +118,22 @@ describe('stanze', () => {
     expect(out).toEqual([{ to: 'anna', msg: { t: 'error', code: 'bad_message' } }]);
   });
 
+  it('reazioni: messa, cambiata, tolta; arriva a entrambi e resta nella chat', () => {
+    const { lobby } = setup();
+    startGame(lobby);
+    const id = pick(lobby.handle('anna', { t: 'chat', text: 'Ti amo' }), 'anna', 'chat')[0].message.id;
+    let out = lobby.handle('bruno', { t: 'react', id, emoji: '❤️' });
+    expect(pick(out, 'anna', 'reaction')[0]).toEqual({ t: 'reaction', id, reactions: [null, '❤️'] });
+    expect(pick(out, 'bruno', 'reaction')).toHaveLength(1);
+    out = lobby.handle('anna', { t: 'react', id, emoji: '😂' });
+    expect(pick(out, 'bruno', 'reaction')[0].reactions).toEqual(['😂', '❤️']);
+    out = lobby.handle('bruno', { t: 'react', id, emoji: null });
+    expect(pick(out, 'anna', 'reaction')[0].reactions).toEqual(['😂', null]);
+    expect(lobby.handle('bruno', { t: 'react', id: 9999, emoji: '❤️' })).toEqual([]);
+    const back = lobby.connect('bruno', 'Bruno');
+    expect(pick(back, 'bruno', 'chatLog')[0].messages[0].reactions).toEqual(['😂', null]);
+  });
+
   it('chat: arriva a entrambi', () => {
     const { lobby } = setup();
     startGame(lobby);
@@ -240,6 +256,10 @@ describe('protocollo', () => {
     expect(parseClientMsg({ t: 'create', series: 15 })).toBeNull();
     expect(parseClientMsg({ t: 'typing', on: true })).toEqual({ t: 'typing', on: true });
     expect(parseClientMsg({ t: 'typing', on: 'si' })).toBeNull();
+    expect(parseClientMsg({ t: 'react', id: 3, emoji: '❤️' })).toEqual({ t: 'react', id: 3, emoji: '❤️' });
+    expect(parseClientMsg({ t: 'react', id: 3, emoji: null })).toEqual({ t: 'react', id: 3, emoji: null });
+    expect(parseClientMsg({ t: 'react', id: 3, emoji: '💩' })).toBeNull();
+    expect(parseClientMsg({ t: 'react', id: 'x', emoji: '❤️' })).toBeNull();
     expect(parseClientMsg({ t: 'hello', playerId: 'p1', name: '' })).toEqual({ t: 'hello', playerId: 'p1', name: '' });
     expect(parseClientMsg({ t: 'hello', playerId: 'p1', name: 'Davide', password: 'x' })).toEqual({ t: 'hello', playerId: 'p1', name: 'Davide', password: 'x' });
     expect(parseClientMsg({ t: 'continue' })).toEqual({ t: 'continue' });

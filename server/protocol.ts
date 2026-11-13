@@ -4,6 +4,8 @@
 import { type Card, type Pair, type PlayerIndex, type PlayerView, type SeriesLength, isCard } from '../supabase/functions/_shared/scopa/index.ts';
 
 export const MAX_CHAT_LENGTH = 500;
+/** Reazioni possibili ai messaggi della chat (una per giocatore e per messaggio). */
+export const REACTIONS = ['❤️', '😂', '😮', '😢', '👍', '🔥'] as const;
 const STICKER_ID = /^[a-z0-9-]{1,60}$/;
 
 /** Foto profilo (uno sticker) per nome, confrontato senza maiuscole né spazi. */
@@ -24,6 +26,8 @@ export type ClientMsg =
   /** Un messaggio di testo oppure uno sticker (id del pacchetto incluso nell'app). */
   | { t: 'chat'; text: string; sticker?: undefined }
   | { t: 'chat'; sticker: string; text?: undefined }
+  /** Reazione a un messaggio della chat; null la toglie. */
+  | { t: 'react'; id: number; emoji: string | null }
   /** Sto scrivendo in chat (on) / ho smesso (off). Non viene salvato. */
   | { t: 'typing'; on: boolean }
   | { t: 'continue' }
@@ -38,6 +42,8 @@ export interface ChatMessage {
   /** Vuoto per gli sticker. */
   text: string;
   sticker?: string;
+  /** Reazione di ciascun giocatore (indicizzata per giocatore). */
+  reactions?: Pair<string | null>;
   at: number;
 }
 
@@ -88,6 +94,7 @@ export type ServerMsg =
   | { t: 'chatLog'; messages: ChatMessage[] }
   | { t: 'chat'; message: ChatMessage }
   | { t: 'typing'; from: PlayerIndex; on: boolean }
+  | { t: 'reaction'; id: number; reactions: Pair<string | null> }
   | { t: 'history'; games: HistoryEntry[] }
   /** La stanza non esiste più (sei uscito tu o è uscito l'avversario). */
   | { t: 'closed'; byOpponent: boolean }
@@ -125,6 +132,10 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
     }
     case 'typing':
       return typeof m.on === 'boolean' ? { t: 'typing', on: m.on } : null;
+    case 'react':
+      return Number.isInteger(m.id) && (m.emoji === null || (REACTIONS as readonly unknown[]).includes(m.emoji))
+        ? { t: 'react', id: m.id as number, emoji: m.emoji as string | null }
+        : null;
     case 'continue':
     case 'rematch':
     case 'leave':

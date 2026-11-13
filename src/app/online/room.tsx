@@ -194,6 +194,8 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
             you={me}
             onSend={(text) => online.send({ t: 'chat', text })}
             onSendSticker={(sticker) => online.send({ t: 'chat', sticker })}
+            onReact={(id, emoji) => online.send({ t: 'react', id, emoji })}
+            opponentReactions={state.opponentReaction?.n ?? 0}
             stickerToken={stickerToken}
             onTyping={(on) => online.setTyping(on)}
             typingName={opponentTyping ? names[opp] : null}

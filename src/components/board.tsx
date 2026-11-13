@@ -16,11 +16,12 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CardBack, CardFace, cardBox } from '@/components/playing-card';
+import { Sparkles, SweepingBroom } from '@/components/table-effects';
 import { CARD_ASPECT } from '@/constants/card-images';
 import { stickerUri } from '@/online/stickers';
 import { Table } from '@/constants/theme';
 import type { PileInfo, Scene, Spot, Sprite } from '@/game/scene';
-import { type Card, type Pair, type PlayerIndex, other } from '@scopa';
+import { type Card, type Pair, type PlayerIndex, SETTEBELLO, other } from '@scopa';
 import { avatarFor } from '@server/protocol';
 
 const OPP_SCALE = 0.62;
@@ -179,6 +180,9 @@ export function Board({ scene, onPressCard, highlighted, names, bubbles, sticker
   };
   const me = scene.you;
   const opp = other(me);
+  // Dove si trova il 7 di denari in questa scena (per le scintille del settebello).
+  const sevenSprite = scene.sprites.find((s) => s.card === SETTEBELLO);
+  const settebello = layout && sevenSprite ? spotPlace(layout, sevenSprite.spot, me, scene.dealer) : null;
 
   return (
     <View style={styles.board} onLayout={onLayout}>
@@ -218,6 +222,13 @@ export function Board({ scene, onPressCard, highlighted, names, bubbles, sticker
               />
             ) : null;
           })}
+          {/* Effetti delle prese speciali: la scopa che spazza, le scintille attorno al settebello. */}
+          {scene.banner && scene.banner.kind !== 'settebello' && (
+            <SweepingBroom key={`broom-${scene.banner.key}`} area={layout.table} />
+          )}
+          {scene.banner && scene.banner.kind !== 'scopa' && settebello && (
+            <Sparkles key={`sparkles-${scene.banner.key}`} x={settebello.x} y={settebello.y} size={layout.cardW} />
+          )}
           {scene.banner && (
             <Animated.View
               key={scene.banner.key}
