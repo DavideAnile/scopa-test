@@ -9,6 +9,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -191,7 +193,8 @@ export function Board({ scene, onPressCard, highlighted, names, bubbles }: Props
               exiting={FadeOut.duration(250)}
               pointerEvents="none"
               style={[styles.bannerWrap, { top: layout.table.y, height: layout.table.h, width: layout.w }]}>
-              <Text style={styles.banner}>{scene.banner.text}</Text>
+              {scene.banner.kind !== 'scopa' && <SettebelloBanner width={layout.w} />}
+              {scene.banner.kind !== 'settebello' && <Text style={styles.banner}>SCOPA!</Text>}
             </Animated.View>
           )}
         </>
@@ -363,6 +366,23 @@ function SpeechBubble({ text }: { text: string }) {
   );
 }
 
+/** "SETTEBELLO!" dorato che pulsa un paio di volte. La grandezza segue la larghezza dello schermo. */
+function SettebelloBanner({ width }: { width: number }) {
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.set(
+      withRepeat(withSequence(withTiming(1.15, { duration: 320 }), withTiming(1, { duration: 320 })), 2),
+    );
+  }, [pulse]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: pulse.get() }] }));
+  return (
+    <Animated.View style={[styles.settebelloWrap, style]}>
+      <Text style={styles.settebelloCoin}>🪙</Text>
+      <Text style={[styles.settebello, { fontSize: Math.min(44, width / 8.5) }]}>SETTEBELLO!</Text>
+    </Animated.View>
+  );
+}
+
 function TypingBubble() {
   const [dots, setDots] = useState(1);
   useEffect(() => {
@@ -410,7 +430,18 @@ const styles = StyleSheet.create({
   },
   bubbleText: { color: '#2B2100', fontSize: 14, fontWeight: 600 },
   typingText: { fontStyle: 'italic', color: '#6B5E3A', minWidth: 100 },
-  bannerWrap: { position: 'absolute', left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  bannerWrap: { position: 'absolute', left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1000, gap: 4 },
+  settebelloWrap: { alignItems: 'center' },
+  settebelloCoin: { fontSize: 34 },
+  settebello: {
+    color: '#FFD54A',
+    fontSize: 44,
+    fontWeight: 900,
+    letterSpacing: 1,
+    textShadowColor: '#7A4A00',
+    textShadowRadius: 12,
+    textShadowOffset: { width: 0, height: 3 },
+  },
   banner: {
     color: Table.accent,
     fontSize: 56,

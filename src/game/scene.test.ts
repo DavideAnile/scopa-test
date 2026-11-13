@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type GameState, applyMove, chooseBotMove, newGame, nextRound, playerView } from '@scopa';
+import { type Card, type GameState, applyMove, chooseBotMove, newGame, nextRound, playerView } from '@scopa';
 
 import { type Scene, dealRoundSteps, moveSteps, restScene } from './scene';
 
@@ -47,5 +47,31 @@ describe('scene', () => {
     const [first] = moveSteps(playerView(s, 0), playerView(next, 0));
     const played = first.scene.sprites.find((sp) => sp.id === m.card);
     expect(played).toMatchObject({ from: { kind: 'opp' }, fromFaceUp: false, faceUp: true });
+  });
+});
+
+describe('banner di scopa e settebello', () => {
+  const base = (over: Partial<GameState>): GameState => ({ ...newGame({ seed: 1, series: 10, dealer: 1 }), turn: 0, ...over });
+  const bannerOf = (s: GameState, card: Card, capture: Card[]) => {
+    const next = applyMove(s, 0, card, capture);
+    return moveSteps(playerView(s, 0), playerView(next, 0)).find((st) => st.scene.banner)?.scene.banner?.kind ?? null;
+  };
+
+  it('settebello preso dal tavolo o giocato', () => {
+    expect(bannerOf(base({ hands: [['7C', '2C', '3C'], ['1S', '2S', '3S']], table: ['7D', '1B'] }), '7C', ['7D'])).toBe('settebello');
+    expect(bannerOf(base({ hands: [['7D', '2C', '3C'], ['1S', '2S', '3S']], table: ['3B', '4B', '1B'] }), '7D', ['3B', '4B'])).toBe('settebello');
+  });
+
+  it('settebello e scopa insieme; solo scopa; presa normale senza banner', () => {
+    expect(bannerOf(base({ hands: [['7D', '2C', '3C'], ['1S', '2S', '3S']], table: ['3B', '4B'] }), '7D', ['3B', '4B'])).toBe('both');
+    expect(bannerOf(base({ hands: [['7C', '2C', '3C'], ['1S', '2S', '3S']], table: ['3B', '4B'] }), '7C', ['3B', '4B'])).toBe('scopa');
+    expect(bannerOf(base({ hands: [['7C', '2C', '3C'], ['1S', '2S', '3S']], table: ['3B', '4B', '1B'] }), '7C', ['3B', '4B'])).toBeNull();
+  });
+
+  it('il settebello rimasto in tavola a fine smazzata non fa banner', () => {
+    const s = base({ turn: 1, deck: [], hands: [[], ['9S']], table: ['7D'], captured: [['1D'], []], lastCapturer: 0 });
+    const next = applyMove(s, 1, '9S', []);
+    expect(next.lastMove?.leftover).toContain('7D');
+    expect(moveSteps(playerView(s, 0), playerView(next, 0)).some((st) => st.scene.banner)).toBe(false);
   });
 });

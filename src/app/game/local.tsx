@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { GameTable } from '@/components/game-table';
@@ -21,16 +21,23 @@ const HUMAN: PlayerIndex = 0;
 const BOT: PlayerIndex = 1;
 const BOT_DELAY_MS = 600;
 
-function freshGame() {
+/** `seed` e `dealer` fissi (dall'indirizzo, es. ?seed=42&dealer=1) servono solo per provare casi precisi. */
+function freshGame(fixed?: { seed?: number; dealer?: PlayerIndex }) {
   return newGame({
-    seed: Math.floor(Math.random() * 2 ** 32),
+    seed: fixed?.seed ?? Math.floor(Math.random() * 2 ** 32),
     series: SERIES_LENGTH,
-    dealer: Math.random() < 0.5 ? 0 : 1,
+    dealer: fixed?.dealer ?? (Math.random() < 0.5 ? 0 : 1),
   });
 }
 
 export default function LocalGameScreen() {
-  const [state, setState] = useState(freshGame);
+  const params = useLocalSearchParams<{ seed?: string; dealer?: string }>();
+  const [state, setState] = useState(() =>
+    freshGame({
+      seed: params.seed ? Number(params.seed) : undefined,
+      dealer: params.dealer === '0' || params.dealer === '1' ? (Number(params.dealer) as PlayerIndex) : undefined,
+    }),
+  );
   const view = playerView(state, HUMAN);
   const { scene, shown, busy } = useTableScene(view);
 

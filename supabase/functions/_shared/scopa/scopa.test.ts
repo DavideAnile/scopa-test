@@ -45,6 +45,12 @@ describe('prese', () => {
     expect(sorted).toEqual(['1C,2S,3B,4D', '1C,2S,7S', '1C,3B,6C', '3B,7S', '4D,6C'].sort());
   });
 
+  it('con un 9: 7+2 o 5+4 si sceglie, ma se c\'è un 9 in tavola si prende quello', () => {
+    const sums = legalCaptures('9D', ['7C', '2S', '5B', '4C']).map((o) => [...o].sort().join('+')).sort();
+    expect(sums).toEqual(['2S+7C', '4C+5B']);
+    expect(legalCaptures('9D', ['7C', '2S', '5B', '4C', '9B'])).toEqual([['9B']]);
+  });
+
   it('nessuna presa = si cala', () => {
     expect(legalCaptures('2D', ['5C', '9S'])).toEqual([]);
   });

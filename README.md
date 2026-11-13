@@ -73,7 +73,8 @@ Altri comandi:
 ## Regole implementate
 
 - Mazzo napoletano da 40 carte. Si danno 3 carte a testa e 4 in tavola; inizia chi non ha distribuito.
-- Se in tavola c'è una carta dello stesso valore, si è obbligati a prendere quella. Altrimenti si prende per somma. Se ci sono più prese possibili, l'app sceglie la migliore; per scegliere tu, tocca prima le carte del tavolo da prendere.
+- Se in tavola c'è una carta dello stesso valore, si è obbligati a prendere quella. Altrimenti si prende per somma. Se ci sono più prese possibili (es. un 9 con 7+2 o 5+4) compare un riquadro per scegliere; in alternativa si possono toccare prima le carte del tavolo da prendere.
+- Quando qualcuno prende il 7 di denari compare "SETTEBELLO!" (insieme a "SCOPA!" se è anche scopa).
 - Scopa quando si svuota il tavolo, tranne con l'ultima giocata della smazzata.
 - A fine smazzata le carte rimaste in tavola vanno all'ultimo che ha preso.
 - Punti: carte, denari, settebello, primiera (7=21, 6=18, A=16, 5=15, 4=14, 3=13, 2=12, figure=10) e scope. In caso di parità il punto non va a nessuno.

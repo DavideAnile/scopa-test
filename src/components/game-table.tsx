@@ -4,9 +4,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Board, type Bubble } from '@/components/board';
+import { CaptureChooser } from '@/components/capture-chooser';
 import { Table } from '@/constants/theme';
 import type { Scene } from '@/game/scene';
-import { type Card, type Pair, type PlayerView, bestCapture, decidedRounds, legalCaptures, matchCapture, other } from '@scopa';
+import { type Card, type Pair, type PlayerView, decidedRounds, legalCaptures, matchCapture, other } from '@scopa';
 
 type Props = {
   /** Stato reale e aggiornato (per decidere le mosse). */
@@ -37,6 +38,8 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
   // Valgono solo per il tavolo su cui sono state scelte: dopo una mossa si azzerano da sole.
   const [picked, setPicked] = useState<{ table: Card[]; cards: Card[] }>({ table: [], cards: [] });
   const chosen = picked.table === view.table ? picked.cards : [];
+  // Riquadro "cosa vuoi prendere?" quando la carta può prendere in più modi.
+  const [choice, setChoice] = useState<{ card: Card; options: Card[][] } | null>(null);
 
   const togglePick = (card: Card) => {
     const next = chosen.includes(card) ? chosen.filter((c) => c !== card) : [...chosen, card];
@@ -50,8 +53,18 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
     }
     const options = legalCaptures(card, view.table);
     const preselected = chosen.length > 0 ? matchCapture(card, view.table, chosen) : null;
+    // Più prese possibili e nessuna scelta fatta prima sul tavolo: si chiede quale.
+    if (options.length > 1 && !preselected) {
+      setChoice({ card, options });
+      return;
+    }
+    play(card, preselected ?? options[0] ?? []);
+  };
+
+  const play = (card: Card, capture: Card[]) => {
+    setChoice(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPlay(card, preselected ?? bestCapture(card, options));
+    onPlay(card, capture);
   };
 
   const bannerKey = scene.banner?.key;
@@ -98,6 +111,12 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
           <Text style={[styles.hint, (myTurn || typing) && styles.hintActive]}>{hint}</Text>
         </View>
       </SafeAreaView>
+      <CaptureChooser
+        card={myTurn ? (choice?.card ?? null) : null}
+        options={choice?.options ?? []}
+        onChoose={(capture) => choice && play(choice.card, capture)}
+        onCancel={() => setChoice(null)}
+      />
     </View>
   );
 }

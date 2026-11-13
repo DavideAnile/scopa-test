@@ -2,7 +2,7 @@
 // Una mossa diventa una sequenza di scene (carta che vola sul tavolo, presa che si riunisce,
 // presa che va nel mazzetto, nuova distribuzione); il tavolo anima il passaggio fra una scena e l'altra.
 
-import { type Card, type Pair, type PlayerIndex, type PlayerView, other } from '@scopa';
+import { type Card, type Pair, type PlayerIndex, type PlayerView, SETTEBELLO, other } from '@scopa';
 
 export type Spot =
   | { kind: 'hand'; index: number; count: number }
@@ -38,7 +38,13 @@ export interface Scene {
   sprites: Sprite[];
   piles: Pair<PileInfo>;
   deckCount: number;
-  banner: { key: string; text: string } | null;
+  banner: Banner | null;
+}
+
+/** Scritta grande sul tavolo dopo una presa speciale. */
+export interface Banner {
+  key: string;
+  kind: 'scopa' | 'settebello' | 'both';
 }
 
 export interface Step {
@@ -227,10 +233,14 @@ export function moveSteps(prev: PlayerView, next: PlayerView): Step[] {
     steps.push({ scene: scene([...others, ...takenSprites(false), played(onTop), ...hands]), hold: TIMING.fly + TIMING.pause });
 
     // 2. Le carte prese si riuniscono sotto la carta giocata.
-    const banner = move.scopa ? { key: `scopa-${next.moveNo}`, text: 'SCOPA!' } : null;
+    // Banner per scopa e/o settebello (7 di denari giocato o preso).
+    const settebello = card === SETTEBELLO || captured.includes(SETTEBELLO);
+    const kind: Banner['kind'] | null =
+      move.scopa && settebello ? 'both' : move.scopa ? 'scopa' : settebello ? 'settebello' : null;
+    const banner: Banner | null = kind ? { key: `${kind}-${next.moveNo}`, kind } : null;
     steps.push({
       scene: scene([...others, ...takenSprites(true), played(onTop), ...hands], banner),
-      hold: TIMING.gather + (move.scopa ? TIMING.scopaPause : TIMING.pause),
+      hold: TIMING.gather + (banner ? TIMING.scopaPause : TIMING.pause),
     });
 
     // 3. La presa va nel mazzetto (coperta; con la scopa la carta giocata resta scoperta, di traverso).
