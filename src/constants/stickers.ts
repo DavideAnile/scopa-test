@@ -22,4 +22,11 @@ export const STICKER_IDS: readonly string[] = [
   'sticker-17',
   'sticker-18',
   'sticker-19',
+  'sticker-20',
+  'sticker-21',
+  'sticker-22',
+  'sticker-23',
+  'sticker-24',
+  'sticker-25',
+  'sticker-26',
 ];
