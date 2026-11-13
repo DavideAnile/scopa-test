@@ -88,6 +88,14 @@ describe('stanze', () => {
     expect(pick(back, 'anna', 'chatLog')[0].messages).toHaveLength(0);
   });
 
+  it('sticker: arriva a entrambi, con testo vuoto', () => {
+    const { lobby } = setup();
+    startGame(lobby);
+    const out = lobby.handle('anna', { t: 'chat', sticker: 'sticker-03' });
+    expect(pick(out, 'bruno', 'chat')[0].message).toMatchObject({ from: 0, sticker: 'sticker-03', text: '' });
+    expect(pick(out, 'anna', 'chat')).toHaveLength(1);
+  });
+
   it('chat: arriva a entrambi', () => {
     const { lobby } = setup();
     startGame(lobby);
@@ -199,6 +207,11 @@ describe('protocollo', () => {
     expect(parseClientMsg({ t: 'play', card: '11D', capture: [], moveNo: 0 })).toBeNull();
     expect(parseClientMsg({ t: 'chat', text: '   ' })).toBeNull();
     expect(parseClientMsg({ t: 'chat', text: 'x'.repeat(501) })).toBeNull();
+    expect(parseClientMsg({ t: 'chat', sticker: 'sticker-01' })).toEqual({ t: 'chat', sticker: 'sticker-01' });
+    expect(parseClientMsg({ t: 'chat', sticker: '../../etc' })).toBeNull();
+    expect(parseClientMsg({ t: 'chat', sticker: 'sticker-01', text: 'ciao' })).toBeNull();
+    expect(parseClientMsg({ t: 'chat', sticker: 42 })).toBeNull();
+    expect(parseClientMsg({ t: 'chat' })).toBeNull();
     expect(parseClientMsg({ t: 'join', code: ' abcd ' })).toEqual({ t: 'join', code: 'ABCD' });
     expect(parseClientMsg({ t: 'play', card: '7D', capture: ['3B', '4B'], moveNo: 3 })).toEqual({
       t: 'play',

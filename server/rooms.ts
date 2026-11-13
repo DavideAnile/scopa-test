@@ -111,7 +111,14 @@ export class Lobby {
 
     switch (msg.t) {
       case 'chat': {
-        const message: ChatMessage = { id: ++this.chatId, from: seat, name: room.seats[seat]!.name, text: msg.text, at: this.now() };
+        const message: ChatMessage = {
+          id: ++this.chatId,
+          from: seat,
+          name: room.seats[seat]!.name,
+          text: msg.text ?? '',
+          ...(msg.sticker ? { sticker: msg.sticker } : {}),
+          at: this.now(),
+        };
         room.chat.push(message);
         if (room.chat.length > MAX_CHAT) room.chat.shift();
         return this.toSeats(room, { t: 'chat', message });

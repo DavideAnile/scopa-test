@@ -2,6 +2,7 @@
 import { Asset } from 'expo-asset';
 import { Platform } from 'react-native';
 
+import { STICKERS } from '@/constants/stickers';
 import type { Card } from '@scopa';
 
 // require() di un'immagine restituisce un id numerico dell'asset.
@@ -61,7 +62,8 @@ const preloaded: HTMLImageElement[] = [];
  * senza precaricarle, una carta che compare per la prima volta resta bianca finché non arriva.
  */
 export function preloadCardImages() {
-  const modules = Object.values(CARD_IMAGES);
+  // Anche gli sticker della chat, così compaiono subito quando arrivano.
+  const modules = [...Object.values(CARD_IMAGES), ...Object.values(STICKERS)];
   if (Platform.OS === 'web') {
     if (preloaded.length > 0) return;
     for (const m of modules) {

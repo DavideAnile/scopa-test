@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -16,6 +17,7 @@ import Animated, {
 
 import { CardBack, CardFace, cardBox } from '@/components/playing-card';
 import { CARD_ASPECT } from '@/constants/card-images';
+import { STICKERS } from '@/constants/stickers';
 import { Table } from '@/constants/theme';
 import type { PileInfo, Scene, Spot, Sprite } from '@/game/scene';
 import { type Card, type Pair, type PlayerIndex, other } from '@scopa';
@@ -34,6 +36,8 @@ export interface Bubble {
   text: string;
   /** "sta scrivendo…": resta finché dura, senza scadenza di 3 secondi. */
   typing?: boolean;
+  /** Sticker al posto del testo. */
+  sticker?: string;
 }
 
 interface Place {
@@ -344,13 +348,13 @@ function PileBubble({ layout, mine, name, bubble }: { layout: Layout; mine: bool
           </Text>
           <Text style={styles.pileCount}>0</Text>
         </View>
-        {bubble.typing ? <TypingBubble /> : <SpeechBubble key={bubble.id} text={bubble.text} />}
+        {bubble.typing ? <TypingBubble /> : <SpeechBubble key={bubble.id} text={bubble.text} sticker={bubble.sticker} />}
       </View>
     </View>
   );
 }
 
-function SpeechBubble({ text }: { text: string }) {
+function SpeechBubble({ text, sticker }: { text: string; sticker?: string }) {
   const [visible, setVisible] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setVisible(false), BUBBLE_MS);
@@ -358,10 +362,14 @@ function SpeechBubble({ text }: { text: string }) {
   }, []);
   if (!visible) return null;
   return (
-    <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(300)} style={styles.bubble}>
-      <Text style={styles.bubbleText} numberOfLines={3}>
-        {text}
-      </Text>
+    <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(300)} style={sticker ? null : styles.bubble}>
+      {sticker && STICKERS[sticker] ? (
+        <Image source={STICKERS[sticker]} style={styles.bubbleSticker} contentFit="contain" />
+      ) : (
+        <Text style={styles.bubbleText} numberOfLines={3}>
+          {text || '[sticker]'}
+        </Text>
+      )}
     </Animated.View>
   );
 }
@@ -429,6 +437,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   bubbleText: { color: '#2B2100', fontSize: 14, fontWeight: 600 },
+  bubbleSticker: { width: 56, height: 56 },
   typingText: { fontStyle: 'italic', color: '#6B5E3A', minWidth: 100 },
   bannerWrap: { position: 'absolute', left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1000, gap: 4 },
   settebelloWrap: { alignItems: 'center' },

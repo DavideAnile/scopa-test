@@ -4,13 +4,16 @@
 import { type Card, type Pair, type PlayerIndex, type PlayerView, type SeriesLength, isCard } from '../supabase/functions/_shared/scopa/index.ts';
 
 export const MAX_CHAT_LENGTH = 500;
+const STICKER_ID = /^[a-z0-9-]{1,60}$/;
 
 export type ClientMsg =
   | { t: 'hello'; playerId: string; name: string }
   | { t: 'create'; series: SeriesLength }
   | { t: 'join'; code: string }
   | { t: 'play'; card: Card; capture: Card[]; moveNo: number }
-  | { t: 'chat'; text: string }
+  /** Un messaggio di testo oppure uno sticker (id del pacchetto incluso nell'app). */
+  | { t: 'chat'; text: string; sticker?: undefined }
+  | { t: 'chat'; sticker: string; text?: undefined }
   /** Sto scrivendo in chat (on) / ho smesso (off). Non viene salvato. */
   | { t: 'typing'; on: boolean }
   | { t: 'continue' }
@@ -22,7 +25,9 @@ export interface ChatMessage {
   id: number;
   from: PlayerIndex;
   name: string;
+  /** Vuoto per gli sticker. */
   text: string;
+  sticker?: string;
   at: number;
 }
 
@@ -93,6 +98,12 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
         ? { t: 'play', card: m.card, capture: m.capture, moveNo: m.moveNo as number }
         : null;
     case 'chat': {
+      // Esattamente uno tra testo e sticker.
+      if (m.sticker !== undefined) {
+        return m.text === undefined && typeof m.sticker === 'string' && STICKER_ID.test(m.sticker)
+          ? { t: 'chat', sticker: m.sticker }
+          : null;
+      }
       const text = typeof m.text === 'string' ? m.text.trim() : '';
       return text.length > 0 && text.length <= MAX_CHAT_LENGTH ? { t: 'chat', text } : null;
     }

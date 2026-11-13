@@ -129,7 +129,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
     for (let i = state.chat.length - 1; i >= 0; i--) {
       const m = state.chat[i];
       if (m.id <= firstChatId) break;
-      if (m.from === player && m.text.length > 0) return { id: m.id, text: m.text };
+      if (m.from === player && (m.text.length > 0 || m.sticker)) return { id: m.id, text: m.text, sticker: m.sticker };
     }
     return null;
   };
@@ -182,6 +182,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
             messages={state.chat}
             you={me}
             onSend={(text) => online.send({ t: 'chat', text })}
+            onSendSticker={(sticker) => online.send({ t: 'chat', sticker })}
             onTyping={(on) => online.setTyping(on)}
             typingName={opponentTyping ? names[opp] : null}
           />

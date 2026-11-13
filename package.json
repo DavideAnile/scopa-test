@@ -50,7 +50,8 @@
     "typecheck": "tsc --noEmit",
     "server": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/index.ts",
     "server:smoke": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON server/smoke.ts",
-    "party": "node scripts/party.mjs"
+    "party": "node scripts/party.mjs",
+    "stickers": "node scripts/stickers.mjs"
   },
   "private": true
 }

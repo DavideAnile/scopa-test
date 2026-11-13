@@ -60,6 +60,18 @@ Altri comandi:
 - `npm run server`: solo il server di gioco (porta 8787; serve anche `dist-web` se esiste)
 - `npm run server:smoke`: con il server avviato, due client finti giocano una partita intera
 
+## Sticker della chat
+
+Gli sticker sono in `assets/stickers/` (`.webp`, `.png` o `.gif`; nomi in minuscolo con cifre e trattini, es. `sticker-20.webp`). Per aggiungerne:
+
+```bash
+cp ~/Desktop/nuovi-sticker/*.webp assets/stickers/
+npm run stickers     # rigenera l'elenco in src/constants/stickers.ts
+git add -A && git commit -m "Nuovi sticker" && git push
+```
+
+Nella chat si aprono con il pulsante **Sticker**. Nota: diventano file del sito, quindi chi ha il link del gioco può raggiungerli.
+
 ## Struttura
 
 - `src/app/`: schermate (Expo Router). `game/local` è la partita contro il computer, `online/*` quella con un amico.

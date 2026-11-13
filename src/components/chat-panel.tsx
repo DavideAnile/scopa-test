@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { STICKERS, STICKER_IDS } from '@/constants/stickers';
 import { Table } from '@/constants/theme';
 import type { PlayerIndex } from '@scopa';
 import { type ChatMessage, MAX_CHAT_LENGTH } from '@server/protocol';
@@ -24,16 +26,19 @@ type Props = {
   messages: ChatMessage[];
   you: PlayerIndex;
   onSend: (text: string) => void;
+  onSendSticker: (id: string) => void;
   /** Avvisa che stai scrivendo (true) o hai smesso (false). */
   onTyping?: (on: boolean) => void;
   /** Nome dell'avversario se sta scrivendo adesso, altrimenti null. */
   typingName?: string | null;
 };
 
-export function ChatPanel({ messages, you, onSend, onTyping, typingName }: Props) {
+export function ChatPanel({ messages, you, onSend, onSendSticker, onTyping, typingName }: Props) {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(0);
   const [draft, setDraft] = useState('');
+  // Sezione "Sticker" aperta sotto i messaggi, come la tastiera degli sticker di WhatsApp.
+  const [stickersOpen, setStickersOpen] = useState(false);
   const scroll = useRef<ScrollViewInstance>(null);
 
   const unread = open ? 0 : messages.slice(seen).filter((m) => m.from !== you).length;
@@ -64,6 +69,12 @@ export function ChatPanel({ messages, you, onSend, onTyping, typingName }: Props
     onTyping?.(false);
     onSend(t);
     setDraft('');
+  };
+
+  const sendSticker = (id: string) => {
+    onTyping?.(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onSendSticker(id);
   };
 
   return (
@@ -97,6 +108,19 @@ export function ChatPanel({ messages, you, onSend, onTyping, typingName }: Props
               {messages.length === 0 && <Text style={styles.empty}>Nessun messaggio. Saluta il tuo avversario!</Text>}
               {messages.map((m) => {
                 const mine = m.from === you;
+                if (m.sticker) {
+                  const source = STICKERS[m.sticker];
+                  return (
+                    <View key={m.id} style={[styles.stickerMsg, mine ? styles.alignEnd : styles.alignStart]}>
+                      {!mine && <Text style={styles.author}>{m.name}</Text>}
+                      {source ? (
+                        <Image source={source} style={styles.stickerImage} contentFit="contain" />
+                      ) : (
+                        <Text style={styles.text}>[sticker]</Text>
+                      )}
+                    </View>
+                  );
+                }
                 return (
                   <View key={m.id} style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
                     {!mine && <Text style={styles.author}>{m.name}</Text>}
@@ -117,6 +141,12 @@ export function ChatPanel({ messages, you, onSend, onTyping, typingName }: Props
               ))}
             </ScrollView>
             <View style={styles.inputRow}>
+              <Pressable
+                onPress={() => setStickersOpen((v) => !v)}
+                accessibilityLabel="Sticker"
+                style={({ pressed }) => [styles.stickerBtn, stickersOpen && styles.stickerBtnOn, pressed && styles.pressed]}>
+                <Text style={[styles.stickerBtnText, stickersOpen && styles.stickerBtnTextOn]}>Sticker</Text>
+              </Pressable>
               <TextInput
                 value={draft}
                 onChangeText={changeDraft}
@@ -135,6 +165,19 @@ export function ChatPanel({ messages, you, onSend, onTyping, typingName }: Props
                 <Text style={styles.sendText}>Invia</Text>
               </Pressable>
             </View>
+            {stickersOpen && (
+              <ScrollView style={styles.stickerPanel} contentContainerStyle={styles.stickerGrid}>
+                {STICKER_IDS.map((id) => (
+                  <Pressable
+                    key={id}
+                    onPress={() => sendSticker(id)}
+                    accessibilityLabel={`Invia ${id}`}
+                    style={({ pressed }) => [styles.stickerCell, pressed && styles.pressed]}>
+                    <Image source={STICKERS[id]} style={styles.stickerThumb} contentFit="contain" />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
@@ -195,4 +238,22 @@ const styles = StyleSheet.create({
   },
   sendBtn: { backgroundColor: Table.accent, borderRadius: 20, paddingHorizontal: 16, justifyContent: 'center' },
   sendText: { color: '#2B2100', fontWeight: 800, fontSize: 16 },
+  stickerBtn: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Table.accent,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  stickerBtnOn: { backgroundColor: Table.accent },
+  stickerBtnText: { color: Table.accent, fontWeight: 800, fontSize: 15 },
+  stickerBtnTextOn: { color: '#2B2100' },
+  stickerPanel: { flexGrow: 0, maxHeight: 280, borderTopWidth: 1, borderTopColor: '#FFFFFF20' },
+  stickerGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
+  stickerCell: { width: '25%', aspectRatio: 1, padding: 6 },
+  stickerThumb: { flex: 1 },
+  stickerMsg: { gap: 2 },
+  alignEnd: { alignSelf: 'flex-end', alignItems: 'flex-end' },
+  alignStart: { alignSelf: 'flex-start', alignItems: 'flex-start' },
+  stickerImage: { width: 130, height: 130 },
 });
