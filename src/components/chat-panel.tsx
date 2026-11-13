@@ -1,5 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -237,8 +238,14 @@ export function ChatPanel({
               <Pressable
                 onPress={() => send(draft)}
                 disabled={!draft.trim()}
+                accessibilityLabel="Invia"
                 style={({ pressed }) => [styles.sendBtn, (!draft.trim() || pressed) && styles.pressed]}>
-                <Text style={styles.sendText}>Invia</Text>
+                <SymbolView
+                  name={{ ios: 'paperplane.fill', android: 'send', web: 'send' }}
+                  tintColor="#2B2100"
+                  size={22}
+                  fallback={<Text style={styles.sendText}>➤</Text>}
+                />
               </Pressable>
             </View>
             {stickersEnabled && stickersOpen && (
@@ -335,9 +342,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 16,
+    // Sul web il campo ha una larghezza minima propria: senza questo spinge fuori il tasto di invio.
+    minWidth: 0,
   },
-  sendBtn: { backgroundColor: Table.accent, borderRadius: 20, paddingHorizontal: 16, justifyContent: 'center' },
-  sendText: { color: '#2B2100', fontWeight: 800, fontSize: 16 },
+  sendBtn: {
+    backgroundColor: Table.accent,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  sendText: { color: '#2B2100', fontSize: 20 },
   stickerBtn: {
     borderRadius: 20,
     borderWidth: 1,
