@@ -24,9 +24,13 @@ type Props = {
   messages: ChatMessage[];
   you: PlayerIndex;
   onSend: (text: string) => void;
+  /** Avvisa che stai scrivendo (true) o hai smesso (false). */
+  onTyping?: (on: boolean) => void;
+  /** Nome dell'avversario se sta scrivendo adesso, altrimenti null. */
+  typingName?: string | null;
 };
 
-export function ChatPanel({ messages, you, onSend }: Props) {
+export function ChatPanel({ messages, you, onSend, onTyping, typingName }: Props) {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(0);
   const [draft, setDraft] = useState('');
@@ -44,13 +48,20 @@ export function ChatPanel({ messages, you, onSend }: Props) {
   }, [last, you]);
 
   const close = () => {
+    onTyping?.(false);
     setSeen(messages.length);
     setOpen(false);
+  };
+
+  const changeDraft = (text: string) => {
+    setDraft(text);
+    onTyping?.(text.trim().length > 0);
   };
 
   const send = (text: string) => {
     const t = text.trim();
     if (!t) return;
+    onTyping?.(false);
     onSend(t);
     setDraft('');
   };
@@ -69,7 +80,10 @@ export function ChatPanel({ messages, you, onSend }: Props) {
       <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
         <SafeAreaView style={styles.sheet} edges={['bottom']}>
           <View style={styles.header}>
-            <Text style={styles.title}>Chat</Text>
+            <View>
+              <Text style={styles.title}>Chat</Text>
+              {typingName && <Text style={styles.typing}>{typingName} sta scrivendo…</Text>}
+            </View>
             <Pressable onPress={close} hitSlop={10}>
               <Text style={styles.done}>Fatto</Text>
             </Pressable>
@@ -105,7 +119,7 @@ export function ChatPanel({ messages, you, onSend }: Props) {
             <View style={styles.inputRow}>
               <TextInput
                 value={draft}
-                onChangeText={setDraft}
+                onChangeText={changeDraft}
                 placeholder="Scrivi un messaggio…"
                 placeholderTextColor="#8A9A90"
                 style={styles.input}
@@ -155,6 +169,7 @@ const styles = StyleSheet.create({
   },
   title: { color: Table.feltText, fontSize: 20, fontWeight: 800 },
   done: { color: Table.accent, fontSize: 17, fontWeight: 700 },
+  typing: { color: Table.accent, fontSize: 13, fontStyle: 'italic', marginTop: 2 },
   list: { padding: 16, gap: 8 },
   empty: { color: Table.feltTextMuted, textAlign: 'center', marginTop: 24 },
   bubble: { maxWidth: '80%', borderRadius: 16, paddingVertical: 8, paddingHorizontal: 12 },

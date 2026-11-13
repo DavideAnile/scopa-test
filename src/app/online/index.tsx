@@ -8,6 +8,7 @@ import { MaxContentWidth, Spacing, Table } from '@/constants/theme';
 import { GAME_SERVER, online, useOnline } from '@/online/client';
 import { type Identity, loadIdentity, saveIdentity } from '@/online/identity';
 import { useWaitingText } from '@/online/use-waiting-text';
+import { SERIES_LENGTH } from '@scopa';
 
 const STATUS_TEXT = {
   idle: 'Non collegato',
@@ -47,9 +48,9 @@ export default function OnlineHomeScreen() {
     return true;
   };
 
-  const create = (series: 10 | 15) => {
+  const create = () => {
     if (!ensureName()) return;
-    online.send({ t: 'create', series });
+    online.send({ t: 'create', series: SERIES_LENGTH });
     router.push('/online/room');
   };
 
@@ -110,10 +111,9 @@ export default function OnlineHomeScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Crea una partita</Text>
-        <Text style={styles.text}>Una serie di 10 o 15 partite: vince chi ne vince di più.</Text>
+        <Text style={styles.text}>Una serie di 10 partite: vince chi ne vince di più. I pareggi non contano.</Text>
         <View style={styles.row}>
-          <MenuButton label="Serie da 10" style={styles.grow} onPress={() => create(10)} disabled={!cleanName} />
-          <MenuButton label="Serie da 15" style={styles.grow} onPress={() => create(15)} disabled={!cleanName} />
+          <MenuButton label="Crea partita (serie da 10)" style={styles.grow} onPress={create} disabled={!cleanName} />
         </View>
       </View>
 

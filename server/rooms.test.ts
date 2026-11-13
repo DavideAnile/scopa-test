@@ -34,7 +34,7 @@ function startGame(lobby: Lobby) {
 describe('stanze', () => {
   it('crea, entra e ognuno vede solo le proprie carte', () => {
     const { lobby } = setup();
-    const created = lobby.handle('anna', { t: 'create', series: 15 });
+    const created = lobby.handle('anna', { t: 'create', series: 10 });
     const room = roomOf(created, 'anna');
     expect(room.code).toMatch(/^[A-Z]{4}$/);
     expect(room.names).toEqual(['Anna', null]);
@@ -45,7 +45,7 @@ describe('stanze', () => {
     const vb = viewOf(joined, 'bruno');
     expect(va.you).toBe(0);
     expect(vb.you).toBe(1);
-    expect(va.series).toBe(15);
+    expect(va.series).toBe(10);
     expect(va.hand.some((c) => vb.hand.includes(c))).toBe(false);
     expect(JSON.stringify(va)).not.toContain('"deck"');
     expect(roomOf(joined, 'bruno').names).toEqual(['Anna', 'Bruno']);
@@ -77,6 +77,15 @@ describe('stanze', () => {
 
     const again = lobby.handle(turnId, { t: 'play', ...move, moveNo: 0 });
     expect(pick(again, turnId, 'error')[0].code).toBe('stale_move');
+  });
+
+  it('"sta scrivendo" arriva solo all\'avversario e non finisce nella chat', () => {
+    const { lobby } = setup();
+    startGame(lobby);
+    const out = lobby.handle('bruno', { t: 'typing', on: true });
+    expect(out).toEqual([{ to: 'anna', msg: { t: 'typing', from: 1, on: true } }]);
+    const back = lobby.connect('anna', 'Anna');
+    expect(pick(back, 'anna', 'chatLog')[0].messages).toHaveLength(0);
   });
 
   it('chat: arriva a entrambi', () => {
@@ -125,11 +134,12 @@ describe('stanze', () => {
       views.anna = viewOf(out, 'anna');
       views.bruno = viewOf(out, 'bruno');
     }
-    expect(views.anna.rounds).toHaveLength(10);
+    // pareggi esclusi e chiusura anticipata: al massimo 10 partite decise
+    expect(views.anna.wins[0] + views.anna.wins[1]).toBeLessThanOrEqual(10);
     expect(finished).toHaveLength(1);
     expect(finished[0].players.map((p) => p.name)).toEqual(['Anna', 'Bruno']);
     expect(finished[0].series).toBe(10);
-    expect(finished[0].rounds).toHaveLength(10);
+    expect(finished[0].rounds).toHaveLength(views.anna.rounds.length);
     expect(finished[0].wins).toEqual(views.anna.wins);
     expect(pick(lobby.handle('anna', { t: 'history' }), 'anna', 'history')[0].games).toHaveLength(1);
 
@@ -182,6 +192,9 @@ describe('protocollo', () => {
   it('scarta messaggi non validi', () => {
     expect(parseClientMsg(null)).toBeNull();
     expect(parseClientMsg({ t: 'create', series: 11 })).toBeNull();
+    expect(parseClientMsg({ t: 'create', series: 15 })).toBeNull();
+    expect(parseClientMsg({ t: 'typing', on: true })).toEqual({ t: 'typing', on: true });
+    expect(parseClientMsg({ t: 'typing', on: 'si' })).toBeNull();
     expect(parseClientMsg({ t: 'continue' })).toEqual({ t: 'continue' });
     expect(parseClientMsg({ t: 'play', card: '11D', capture: [], moveNo: 0 })).toBeNull();
     expect(parseClientMsg({ t: 'chat', text: '   ' })).toBeNull();

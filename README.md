@@ -48,7 +48,7 @@ npm run party -- --lan   # oppure: siete sulla stessa rete Wi-Fi
 
 1. Lo script prepara la versione web (circa 30 secondi) e stampa il **link per l'amico** (`https://….trycloudflare.com`).
 2. Tu apri l'app: inquadra il QR con la Fotocamera (Expo Go, con lo stesso account Expo del Mac: `npx expo whoami`) oppure apri anche tu il link in Safari.
-3. **Gioca online**: scegli il nome, poi **Serie da 10** o **Serie da 15**, poi **Invita un amico**. Gli arriva un link che apre la partita con il codice già inserito: scrive il nome e tocca **Entra**.
+3. **Gioca online**: scegli il nome, poi **Crea partita (serie da 10)**, poi **Invita un amico**. Gli arriva un link che apre la partita con il codice già inserito: scrive il nome e tocca **Entra**.
 4. Il Mac deve restare acceso finché giocate (lo script lo tiene sveglio). **Ctrl+C** chiude tutto.
 
 Perché l'amico non usa Expo Go: quando apre un progetto da un tunnel internet, Expo Go vuole che il telefono abbia lo stesso account Expo del Mac. La versione web non ha questo vincolo.
@@ -77,6 +77,9 @@ Altri comandi:
 - Scopa quando si svuota il tavolo, tranne con l'ultima giocata della smazzata.
 - A fine smazzata le carte rimaste in tavola vanno all'ultimo che ha preso.
 - Punti: carte, denari, settebello, primiera (7=21, 6=18, A=16, 5=15, 4=14, 3=13, 2=12, figure=10) e scope. In caso di parità il punto non va a nessuno.
-- Si gioca una **serie di 10 o 15 partite**. Una partita è una smazzata: si giocano tutte le 40 carte e la vince chi fa più punti (a punti pari è pareggio).
+- Si gioca una **serie da 10 partite**. Una partita è una smazzata: si giocano tutte le 40 carte e la vince chi fa più punti.
+- Una partita finita in **pareggio non conta**: compare "Partita finita in pareggio, non viene contata!" e la serie va avanti finché non ci sono 10 partite decise.
+- La serie si **chiude in anticipo** quando chi è indietro non può più nemmeno pareggiare (es. 6–0: anche vincendo le 4 rimaste si arriverebbe a 6–4).
+- In chat, quando l'avversario sta scrivendo compare "sta scrivendo…" accanto al suo nome e nella riga in basso.
 - A fine partita c'è il riepilogo: la successiva parte quando **entrambi** premono **Continua**. Vince la serie chi ha vinto più partite.
 - Se una partita la vince il giocatore "Davide" compare uno di 3 messaggi d'amore; se la perde, uno di altri 5. Il messaggio è scelto a caso ma è uguale sui due schermi; con un pareggio o senza nessun "Davide" non compare niente (vedi `src/game/love.ts`).

@@ -11,6 +11,7 @@ import { RoundSummary } from '@/components/round-summary';
 import { Spacing, Table } from '@/constants/theme';
 import { useTableScene } from '@/game/use-table-scene';
 import { ERROR_TEXT, type OnlineState, inviteLink, online, useOnline } from '@/online/client';
+import { useOpponentTyping } from '@/online/use-opponent-typing';
 import { useWaitingText } from '@/online/use-waiting-text';
 import { type Card, type Pair, type PlayerIndex, type PlayerView, other } from '@scopa';
 import type { RoomInfo } from '@server/protocol';
@@ -132,7 +133,9 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
     }
     return null;
   };
+  const opponentTyping = useOpponentTyping(state.opponentTypingAt);
   const bubbles: Pair<Bubble | null> = [bubbleOf(0), bubbleOf(1)];
+  if (opponentTyping) bubbles[other(room.you)] = { id: -1, text: '', typing: true };
 
   const me = room.you;
   const opp = other(me);
@@ -173,7 +176,16 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
         onExit={exit}
         notice={notice}
         bubbles={bubbles}
-        headerRight={<ChatPanel messages={state.chat} you={me} onSend={(text) => online.send({ t: 'chat', text })} />}
+        typingName={opponentTyping ? (room.names[other(room.you)] ?? null) : null}
+        headerRight={
+          <ChatPanel
+            messages={state.chat}
+            you={me}
+            onSend={(text) => online.send({ t: 'chat', text })}
+            onTyping={(on) => online.setTyping(on)}
+            typingName={opponentTyping ? names[opp] : null}
+          />
+        }
       />
       <RoundSummary
         visible={!busy && shown.status !== 'playing'}

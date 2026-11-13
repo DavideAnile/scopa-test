@@ -29,8 +29,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contro il computer</Text>
           <View style={styles.row}>
-            <MenuButton label="Serie da 10" style={styles.grow} onPress={() => router.push('/game/local?series=10')} />
-            <MenuButton label="Serie da 15" style={styles.grow} onPress={() => router.push('/game/local?series=15')} />
+            <MenuButton label="Serie da 10" style={styles.grow} onPress={() => router.push('/game/local')} />
           </View>
         </View>
 

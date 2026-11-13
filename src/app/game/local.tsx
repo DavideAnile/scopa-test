@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { GameTable } from '@/components/game-table';
@@ -9,7 +9,7 @@ import {
   type Card,
   type Pair,
   type PlayerIndex,
-  type SeriesLength,
+  SERIES_LENGTH,
   applyMove,
   chooseBotMove,
   newGame,
@@ -21,19 +21,16 @@ const HUMAN: PlayerIndex = 0;
 const BOT: PlayerIndex = 1;
 const BOT_DELAY_MS = 600;
 
-function freshGame(series: SeriesLength) {
+function freshGame() {
   return newGame({
     seed: Math.floor(Math.random() * 2 ** 32),
-    series,
+    series: SERIES_LENGTH,
     dealer: Math.random() < 0.5 ? 0 : 1,
   });
 }
 
 export default function LocalGameScreen() {
-  const params = useLocalSearchParams<{ series?: string }>();
-  const series: SeriesLength = params.series === '15' ? 15 : 10;
-
-  const [state, setState] = useState(() => freshGame(series));
+  const [state, setState] = useState(freshGame);
   const view = playerView(state, HUMAN);
   const { scene, shown, busy } = useTableScene(view);
 
@@ -76,7 +73,7 @@ export default function LocalGameScreen() {
         view={shown}
         names={names}
         onContinue={() => setState(nextRound)}
-        onRematch={() => setState(freshGame(series))}
+        onRematch={() => setState(freshGame())}
         onExit={() => router.back()}
       />
     </>

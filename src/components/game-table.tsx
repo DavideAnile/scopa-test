@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Board, type Bubble } from '@/components/board';
 import { Table } from '@/constants/theme';
 import type { Scene } from '@/game/scene';
-import { type Card, type Pair, type PlayerView, bestCapture, legalCaptures, matchCapture, other } from '@scopa';
+import { type Card, type Pair, type PlayerView, bestCapture, decidedRounds, legalCaptures, matchCapture, other } from '@scopa';
 
 type Props = {
   /** Stato reale e aggiornato (per decidere le mosse). */
@@ -24,9 +24,11 @@ type Props = {
   notice?: string | null;
   /** Messaggi della chat da mostrare per qualche secondo accanto ai nomi. */
   bubbles?: Pair<Bubble | null>;
+  /** Nome dell'avversario se sta scrivendo in chat: lo si dice nella riga in basso. */
+  typingName?: string | null;
 };
 
-export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, headerRight, notice, bubbles }: Props) {
+export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, headerRight, notice, bubbles, typingName }: Props) {
   const me = view.you;
   const opp = other(me);
   const myTurn = view.status === 'playing' && view.turn === me && !busy;
@@ -64,6 +66,9 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
   else if (!myTurn) hint = `Tocca a ${names[opp]}…`;
   else if (chosen.length > 0) hint = 'Ora tocca la carta da giocare';
   else hint = 'Tocca a te';
+  // Se l'avversario sta scrivendo lo si dice qui, così si può aspettare prima di giocare.
+  const typing = view.status === 'playing' && !!typingName;
+  if (typing) hint = `${typingName} sta scrivendo…`;
 
   return (
     <View style={styles.felt}>
@@ -75,7 +80,7 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
           <Text style={styles.score} numberOfLines={1}>
             {shown.wins[me]} – {shown.wins[opp]}
             <Text style={styles.muted}>
-              {'  '}partita {shown.roundNo}/{shown.series}
+              {'  '}partita {Math.min(decidedRounds(shown) + 1, shown.series)}/{shown.series}
             </Text>
           </Text>
           <View style={styles.topRight}>{headerRight}</View>
@@ -90,7 +95,7 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
         <Board scene={scene} names={[names[0], names[1]]} onPressCard={playCard} highlighted={chosen} bubbles={bubbles} />
 
         <View style={styles.hintRow}>
-          <Text style={[styles.hint, myTurn && styles.hintActive]}>{hint}</Text>
+          <Text style={[styles.hint, (myTurn || typing) && styles.hintActive]}>{hint}</Text>
         </View>
       </SafeAreaView>
     </View>

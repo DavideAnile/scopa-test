@@ -3,7 +3,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { Table } from '@/constants/theme';
 import { loveMessageFor } from '@/game/love';
-import type { Pair, PlayerView } from '@scopa';
+import { type Pair, type PlayerView, decidedRounds, other } from '@scopa';
 
 type Props = {
   visible: boolean;
@@ -34,11 +34,22 @@ export function RoundSummary({ visible, view, names, onContinue, onRematch, onEx
   else if (roundWinner === me) roundLine = 'Hai vinto tu!';
   else roundLine = `Vince ${names[roundWinner]}`;
 
-  let title = `Partita ${view.rounds.length} di ${view.series}`;
+  // I pareggi non contano nella serie: il numero della partita è quello delle partite decise.
+  const decided = decidedRounds(view);
+  let title = roundWinner === null ? 'Pareggio' : `Partita ${decided} di ${view.series}`;
+  let subtitle = roundWinner === null ? 'Partita finita in pareggio, non viene contata!' : roundLine;
+  let closedEarly: string | null = null;
   if (finished) {
     if (view.winner === null) title = 'Serie in pareggio';
     else if (view.winner === me) title = 'Hai vinto la serie! 🏆';
     else title = `${names[view.winner]} vince la serie`;
+    subtitle = `Ultima partita: ${roundLine.toLowerCase()}`;
+    if (view.winner !== null && decided < view.series) {
+      const loser = other(view.winner);
+      const score = `${view.wins[view.winner]}–${view.wins[loser]}`;
+      closedEarly =
+        loser === me ? `Serie chiusa: non puoi più recuperare (${score})` : `Serie chiusa: ${names[loser]} non può più recuperare (${score})`;
+    }
   }
 
   const love = loveMessageFor(names, roundWinner, view.moveNo, view.roundNo);
@@ -60,7 +71,8 @@ export function RoundSummary({ visible, view, names, onContinue, onRematch, onEx
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{finished ? `Ultima partita: ${roundLine.toLowerCase()}` : roundLine}</Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
+          {closedEarly && <Text style={styles.closed}>{closedEarly}</Text>}
 
           {love && (
             <Animated.View entering={ZoomIn.springify().damping(10)} style={styles.love}>
@@ -142,6 +154,7 @@ const styles = StyleSheet.create({
   },
   title: { color: Table.accent, fontSize: 24, fontWeight: 800, textAlign: 'center' },
   subtitle: { color: Table.feltText, fontSize: 17, fontWeight: 700, textAlign: 'center', marginBottom: 8 },
+  closed: { color: Table.feltTextMuted, fontSize: 14, fontWeight: 600, textAlign: 'center', marginTop: -4, marginBottom: 8 },
   love: {
     backgroundColor: '#F7C6D9',
     borderRadius: 14,

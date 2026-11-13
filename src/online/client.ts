@@ -38,6 +38,8 @@ export interface OnlineState {
   closedByOpponent: boolean;
   /** Da quando si sta aspettando il server (null se collegati). Su Render può dormire ~1 minuto. */
   waitingSince: number | null;
+  /** Ultimo segnale "sta scrivendo" dell'avversario (null se ha smesso o ha inviato). */
+  opponentTypingAt: number | null;
 }
 
 const INITIAL: OnlineState = {
@@ -49,6 +51,7 @@ const INITIAL: OnlineState = {
   error: null,
   closedByOpponent: false,
   waitingSince: null,
+  opponentTypingAt: null,
 };
 
 /** Connessione al server con riconnessione automatica. Store esterno per useSyncExternalStore. */
@@ -60,6 +63,8 @@ class OnlineClient {
   private queue: ClientMsg[] = [];
   private retry = 0;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private typingOn = false;
+  private typingSentAt = 0;
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -89,6 +94,23 @@ class OnlineClient {
     if (msg.t === 'leave') this.set({ room: null, view: null, chat: [], closedByOpponent: false });
     if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
     else this.queue.push(msg);
+  }
+
+  /**
+   * Avvisa l'avversario che stai scrivendo: "on" al massimo ogni 2 s mentre scrivi, "off" quando
+   * smetti (campo vuoto, messaggio inviato, chat chiusa). Non viene messo in coda se si è offline.
+   */
+  setTyping(on: boolean) {
+    if (!this.state.room || this.ws?.readyState !== WebSocket.OPEN) return;
+    const now = Date.now();
+    if (on) {
+      if (this.typingOn && now - this.typingSentAt < 2000) return;
+      this.typingSentAt = now;
+    } else if (!this.typingOn) {
+      return;
+    }
+    this.typingOn = on;
+    this.ws.send(JSON.stringify({ t: 'typing', on } satisfies ClientMsg));
   }
 
   clearError() {
@@ -133,12 +155,20 @@ class OnlineClient {
         return this.set({ view: msg.view });
       case 'chatLog':
         return this.set({ chat: msg.messages });
-      case 'chat':
-        return this.set({ chat: [...this.state.chat, msg.message] });
+      case 'chat': {
+        // Un messaggio dell'avversario chiude il suo "sta scrivendo".
+        const fromOpponent = this.state.room !== null && msg.message.from !== this.state.room.you;
+        return this.set({
+          chat: [...this.state.chat, msg.message],
+          ...(fromOpponent ? { opponentTypingAt: null } : {}),
+        });
+      }
+      case 'typing':
+        return this.set({ opponentTypingAt: msg.on ? Date.now() : null });
       case 'history':
         return this.set({ history: msg.games });
       case 'closed':
-        return this.set({ room: null, view: null, closedByOpponent: msg.byOpponent });
+        return this.set({ room: null, view: null, closedByOpponent: msg.byOpponent, opponentTypingAt: null });
       case 'error':
         // Una mossa doppia (tocco ripetuto) non è un errore da mostrare.
         if (msg.code === 'stale_move' || msg.code === 'not_your_turn') return;

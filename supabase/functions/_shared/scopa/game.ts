@@ -3,8 +3,9 @@ import { matchCapture } from './rules.ts';
 import { type Pair, type RoundResult, scoreRound } from './scoring.ts';
 
 export type PlayerIndex = 0 | 1;
-/** Quante partite (smazzate) compongono una serie. */
-export type SeriesLength = 10 | 15;
+/** Quante partite decise (i pareggi non contano) compongono una serie. */
+export type SeriesLength = 10;
+export const SERIES_LENGTH: SeriesLength = 10;
 /** playing: si gioca; roundOver: partita finita, si aspetta "Continua"; finished: serie finita. */
 export type GameStatus = 'playing' | 'roundOver' | 'finished';
 
@@ -143,14 +144,22 @@ function endRound(state: GameState): Pick<LastMove, 'leftover' | 'leftoverTo'> {
   state.rounds.push(result);
   if (result.winner !== null) state.wins[result.winner]++;
 
-  if (state.rounds.length >= state.series) {
-    const [a, b] = state.wins;
+  // I pareggi non contano. La serie finisce dopo `series` partite decise, oppure prima se chi è
+  // indietro non può più nemmeno pareggiare (es. 6–0 con 4 partite rimaste).
+  const [a, b] = state.wins;
+  const remaining = state.series - decidedRounds(state);
+  if (remaining <= 0 || Math.abs(a - b) > remaining) {
     state.status = 'finished';
     state.winner = a === b ? null : a > b ? 0 : 1;
   } else {
     state.status = 'roundOver';
   }
   return { leftover, leftoverTo };
+}
+
+/** Partite della serie con un vincitore (i pareggi non contano). */
+export function decidedRounds(state: { wins: Pair<number> }): number {
+  return state.wins[0] + state.wins[1];
 }
 
 /** Dopo il "Continua": distribuisce la partita successiva della serie. */

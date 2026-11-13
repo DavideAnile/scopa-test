@@ -30,6 +30,8 @@ const BUBBLE_MS = 3000;
 export interface Bubble {
   id: number;
   text: string;
+  /** "sta scrivendo…": resta finché dura, senza scadenza di 3 secondi. */
+  typing?: boolean;
 }
 
 interface Place {
@@ -339,7 +341,7 @@ function PileBubble({ layout, mine, name, bubble }: { layout: Layout; mine: bool
           </Text>
           <Text style={styles.pileCount}>0</Text>
         </View>
-        <SpeechBubble key={bubble.id} text={bubble.text} />
+        {bubble.typing ? <TypingBubble /> : <SpeechBubble key={bubble.id} text={bubble.text} />}
       </View>
     </View>
   );
@@ -357,6 +359,19 @@ function SpeechBubble({ text }: { text: string }) {
       <Text style={styles.bubbleText} numberOfLines={3}>
         {text}
       </Text>
+    </Animated.View>
+  );
+}
+
+function TypingBubble() {
+  const [dots, setDots] = useState(1);
+  useEffect(() => {
+    const timer = setInterval(() => setDots((d) => (d % 3) + 1), 400);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(200)} style={styles.bubble}>
+      <Text style={[styles.bubbleText, styles.typingText]}>sta scrivendo{'.'.repeat(dots)}</Text>
     </Animated.View>
   );
 }
@@ -394,6 +409,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   bubbleText: { color: '#2B2100', fontSize: 14, fontWeight: 600 },
+  typingText: { fontStyle: 'italic', color: '#6B5E3A', minWidth: 100 },
   bannerWrap: { position: 'absolute', left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   banner: {
     color: Table.accent,

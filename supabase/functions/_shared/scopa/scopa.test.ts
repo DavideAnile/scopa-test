@@ -7,6 +7,7 @@ import {
   MoveError,
   applyMove,
   bestCapture,
+  decidedRounds,
   chooseBotMove,
   nextRound,
   legalCaptures,
@@ -166,34 +167,35 @@ describe('mosse', () => {
 });
 
 describe('partita completa', () => {
-  function playOut(seed: number, series: 10 | 15) {
-    let s = newGame({ seed, series });
+  function playOut(seed: number) {
+    let s = newGame({ seed, series: 10 });
     let moves = 0;
     while (s.status !== 'finished') {
       if (s.status === 'roundOver') s = nextRound(s);
       const move = chooseBotMove(playerView(s, s.turn));
       s = applyMove(s, s.turn, move.card, move.capture);
-      if (++moves > 20000) throw new Error('loop');
+      if (++moves > 50000) throw new Error('loop');
     }
     return s;
   }
 
-  it('bot contro bot: la serie dura esattamente 10 o 15 partite', () => {
-    for (let seed = 1; seed <= 20; seed++) {
-      for (const series of [10, 15] as const) {
-        const s = playOut(seed, series);
-        expect(s.rounds).toHaveLength(series);
-        expect(s.roundNo).toBe(series);
-        const wins: [number, number] = [0, 0];
-        for (const r of s.rounds) {
-          // ogni smazzata usa tutte le 40 carte
-          expect(r.stats[0].cards + r.stats[1].cards).toBe(40);
-          if (r.winner !== null) wins[r.winner]++;
-          expect(r.winner).toBe(r.points[0] === r.points[1] ? null : r.points[0] > r.points[1] ? 0 : 1);
-        }
-        expect(s.wins).toEqual(wins);
-        expect(s.winner).toBe(wins[0] === wins[1] ? null : wins[0] > wins[1] ? 0 : 1);
-      }
+  it('bot contro bot: la serie finisce secondo la regola (pareggi esclusi, chiusura anticipata)', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = playOut(seed);
+      const wins: [number, number] = [0, 0];
+      s.rounds.forEach((r, i) => {
+        // ogni smazzata usa tutte le 40 carte
+        expect(r.stats[0].cards + r.stats[1].cards).toBe(40);
+        expect(r.winner).toBe(r.points[0] === r.points[1] ? null : r.points[0] > r.points[1] ? 0 : 1);
+        if (r.winner !== null) wins[r.winner]++;
+        const remaining = 10 - (wins[0] + wins[1]);
+        const over = remaining <= 0 || Math.abs(wins[0] - wins[1]) > remaining;
+        // la serie finisce esattamente alla prima smazzata in cui vale la regola
+        expect(over).toBe(i === s.rounds.length - 1);
+      });
+      expect(s.wins).toEqual(wins);
+      expect(decidedRounds(s)).toBeLessThanOrEqual(10);
+      expect(s.winner).toBe(wins[0] === wins[1] ? null : wins[0] > wins[1] ? 0 : 1);
     }
   });
 
@@ -204,5 +206,54 @@ describe('partita completa', () => {
     expect(s.hands[1]).toHaveLength(3);
     expect(s.table).toHaveLength(4);
     expect(s.deck).toHaveLength(30);
+  });
+});
+
+describe('serie da 10', () => {
+  const ALL = FULL_DECK.filter((c) => c !== '5S' && c !== '5B');
+  // Prepara la fine di una smazzata con esito noto: il giocatore 1 gioca 5S e prende 5B.
+  function endRound(s: GameState, outcome: 0 | 1 | null): GameState {
+    let captured: [Card[], Card[]];
+    if (outcome === 0) captured = [ALL, []];
+    else if (outcome === 1) captured = [[], ALL];
+    else {
+      // 2–2: a 0 denari e settebello, a 1 carte e primiera.
+      const zero = FULL_DECK.filter((c) => c.endsWith('D') && c !== '1D');
+      captured = [zero, ALL.filter((c) => !zero.includes(c))];
+    }
+    const ready: GameState = { ...s, turn: 1, deck: [], hands: [[], ['5S']], table: ['5B'], captured, scope: [0, 0], scopeCards: [[], []], lastCapturer: null };
+    const n = applyMove(ready, 1, '5S', ['5B']);
+    expect(n.rounds.at(-1)!.winner).toBe(outcome);
+    return n;
+  }
+  function play(outcomes: (0 | 1 | null)[]) {
+    let s = newGame({ seed: 9, series: 10 });
+    for (const o of outcomes) {
+      if (s.status === 'roundOver') s = nextRound(s);
+      expect(s.status).toBe('playing');
+      s = endRound(s, o);
+    }
+    return s;
+  }
+
+  it('i pareggi non contano: la serie va oltre 10 smazzate', () => {
+    const s = play([null, null, null, 0, 1, 0, 1, 0, 1, 0, 1, 0]);
+    expect(s.rounds).toHaveLength(12);
+    expect(decidedRounds(s)).toBe(9);
+    expect(s.status).toBe('roundOver');
+    const end = play([null, null, null, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]);
+    expect(end).toMatchObject({ status: 'finished', wins: [5, 5], winner: null });
+  });
+
+  it('6–0 chiude la serie: anche vincendo le 4 rimaste si arriverebbe a 6–4', () => {
+    expect(play([0, 0, 0, 0, 0]).status).toBe('roundOver');
+    expect(play([0, 0, 0, 0, 0, 0])).toMatchObject({ status: 'finished', wins: [6, 0], winner: 0 });
+  });
+
+  it('5–0 non chiude (si può ancora arrivare a 5–5), 6–3 sì', () => {
+    expect(play([0, 0, 0, 0, 0]).status).toBe('roundOver');
+    expect(play([0, 1, 0, 1, 0, 1, 0, 0]).status).toBe('roundOver'); // 5–3, ne restano 2
+    expect(play([0, 1, 0, 1, 0, 1, 0, 0, 0])).toMatchObject({ status: 'finished', wins: [6, 3], winner: 0 });
+    expect(play([1, 1, 1, 1, 1, 1])).toMatchObject({ status: 'finished', wins: [0, 6], winner: 1 });
   });
 });

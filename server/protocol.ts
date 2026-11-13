@@ -11,6 +11,8 @@ export type ClientMsg =
   | { t: 'join'; code: string }
   | { t: 'play'; card: Card; capture: Card[]; moveNo: number }
   | { t: 'chat'; text: string }
+  /** Sto scrivendo in chat (on) / ho smesso (off). Non viene salvato. */
+  | { t: 'typing'; on: boolean }
   | { t: 'continue' }
   | { t: 'rematch' }
   | { t: 'leave' }
@@ -67,6 +69,7 @@ export type ServerMsg =
   | { t: 'view'; view: PlayerView }
   | { t: 'chatLog'; messages: ChatMessage[] }
   | { t: 'chat'; message: ChatMessage }
+  | { t: 'typing'; from: PlayerIndex; on: boolean }
   | { t: 'history'; games: HistoryEntry[] }
   /** La stanza non esiste più (sei uscito tu o è uscito l'avversario). */
   | { t: 'closed'; byOpponent: boolean }
@@ -82,7 +85,7 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
     case 'hello':
       return isString(m.playerId, 64) && isString(m.name, 40) ? { t: 'hello', playerId: m.playerId, name: m.name.trim() } : null;
     case 'create':
-      return m.series === 10 || m.series === 15 ? { t: 'create', series: m.series } : null;
+      return m.series === 10 ? { t: 'create', series: m.series } : null;
     case 'join':
       return isString(m.code, 8) ? { t: 'join', code: m.code.trim().toUpperCase() } : null;
     case 'play':
@@ -93,6 +96,8 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       const text = typeof m.text === 'string' ? m.text.trim() : '';
       return text.length > 0 && text.length <= MAX_CHAT_LENGTH ? { t: 'chat', text } : null;
     }
+    case 'typing':
+      return typeof m.on === 'boolean' ? { t: 'typing', on: m.on } : null;
     case 'continue':
     case 'rematch':
     case 'leave':

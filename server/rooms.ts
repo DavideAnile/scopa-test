@@ -116,6 +116,10 @@ export class Lobby {
         if (room.chat.length > MAX_CHAT) room.chat.shift();
         return this.toSeats(room, { t: 'chat', message });
       }
+      case 'typing': {
+        const opp = room.seats[other(seat)];
+        return opp ? [{ to: opp.id, msg: { t: 'typing', from: seat, on: msg.on } }] : [];
+      }
       case 'play': {
         const game = room.game;
         if (!game) return this.error(playerId, 'no_game');
