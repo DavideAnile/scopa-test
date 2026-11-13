@@ -204,6 +204,21 @@ describe('stanze', () => {
   });
 });
 
+describe('password', () => {
+  it('serve la password per creare, non per entrare con il codice', () => {
+    const lobby = new Lobby({ random: rng(1), password: 'segreta' });
+    lobby.connect('ospite', 'Giorgia');
+    lobby.connect('ladro', 'Tizio', 'sbagliata');
+    expect(pick(lobby.handle('ospite', { t: 'create', series: 10 }), 'ospite', 'error')[0].code).toBe('not_authorized');
+    expect(pick(lobby.handle('ladro', { t: 'create', series: 10 }), 'ladro', 'error')[0].code).toBe('not_authorized');
+
+    lobby.handle('davide', { t: 'hello', playerId: 'davide', name: 'Davide', password: 'segreta' });
+    const code = roomOf(lobby.handle('davide', { t: 'create', series: 10 }), 'davide').code;
+    const joined = lobby.handle('ospite', { t: 'join', code });
+    expect(viewOf(joined, 'ospite').you).toBe(1);
+  });
+});
+
 describe('protocollo', () => {
   it('scarta messaggi non validi', () => {
     expect(parseClientMsg(null)).toBeNull();
@@ -211,6 +226,8 @@ describe('protocollo', () => {
     expect(parseClientMsg({ t: 'create', series: 15 })).toBeNull();
     expect(parseClientMsg({ t: 'typing', on: true })).toEqual({ t: 'typing', on: true });
     expect(parseClientMsg({ t: 'typing', on: 'si' })).toBeNull();
+    expect(parseClientMsg({ t: 'hello', playerId: 'p1', name: '' })).toEqual({ t: 'hello', playerId: 'p1', name: '' });
+    expect(parseClientMsg({ t: 'hello', playerId: 'p1', name: 'Davide', password: 'x' })).toEqual({ t: 'hello', playerId: 'p1', name: 'Davide', password: 'x' });
     expect(parseClientMsg({ t: 'continue' })).toEqual({ t: 'continue' });
     expect(parseClientMsg({ t: 'play', card: '11D', capture: [], moveNo: 0 })).toBeNull();
     expect(parseClientMsg({ t: 'chat', text: '   ' })).toBeNull();

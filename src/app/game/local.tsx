@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 
+import { RequireAuth } from '@/components/require-auth';
 import { GameTable } from '@/components/game-table';
 import { RoundSummary } from '@/components/round-summary';
 import { useTableScene } from '@/game/use-table-scene';
@@ -31,6 +32,14 @@ function freshGame(fixed?: { seed?: number; dealer?: PlayerIndex }) {
 }
 
 export default function LocalGameScreen() {
+  return (
+    <RequireAuth>
+      <LocalGame />
+    </RequireAuth>
+  );
+}
+
+function LocalGame() {
   const params = useLocalSearchParams<{ seed?: string; dealer?: string }>();
   const [state, setState] = useState(() =>
     freshGame({

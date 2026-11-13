@@ -3,7 +3,7 @@
 // Le stanze vivono in memoria; lo storico delle partite finisce in server/data/history.json.
 
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
+import { type IncomingMessage, type ServerResponse, createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
@@ -11,6 +11,7 @@ import { gzipSync } from 'node:zlib';
 import { WebSocket, WebSocketServer } from 'ws';
 
 import { HistoryStore } from './history.ts';
+import { PASSWORD } from './password.ts';
 import { type ServerMsg, parseClientMsg } from './protocol.ts';
 import { Lobby, type Outgoing } from './rooms.ts';
 
@@ -22,7 +23,46 @@ const history = new HistoryStore(fileURLToPath(new URL('./data/history.json', im
 const lobby = new Lobby({
   onGameFinished: (entry) => history.add(entry),
   history: (playerId) => history.forPlayer(playerId),
+  password: PASSWORD,
 });
+
+// Login: dopo 10 password sbagliate dallo stesso indirizzo, 1 minuto di blocco.
+const MAX_FAILURES = 10;
+const LOCK_MS = 60_000;
+const failures = new Map<string, { count: number; until: number }>();
+
+function handleLogin(req: IncomingMessage, res: ServerResponse) {
+  const ip = String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? '').split(',')[0].trim();
+  const now = Date.now();
+  const f = failures.get(ip);
+  if (f && f.until > now) {
+    res.writeHead(429, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'too_many' }));
+    return;
+  }
+  let body = '';
+  req.on('data', (chunk) => {
+    body += chunk;
+    if (body.length > 1000) req.destroy();
+  });
+  req.on('end', () => {
+    let password: unknown;
+    try {
+      password = JSON.parse(body).password;
+    } catch {
+      password = undefined;
+    }
+    const ok = typeof password === 'string' && password === PASSWORD;
+    if (ok) {
+      failures.delete(ip);
+    } else {
+      const count = (f && f.until <= now && f.count >= MAX_FAILURES ? 0 : (f?.count ?? 0)) + 1;
+      failures.set(ip, { count, until: count >= MAX_FAILURES ? now + LOCK_MS : 0 });
+    }
+    res.writeHead(ok ? 200 : 401, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    res.end(JSON.stringify({ ok }));
+  });
+}
 
 const sockets = new Map<string, WebSocket>();
 const alive = new WeakSet<WebSocket>();
@@ -74,6 +114,20 @@ const http = createServer((req, res) => {
     res.writeHead(301, { location: `https://${host}${req.url ?? '/'}` });
     res.end();
     return;
+  }
+
+  // Login con password (chi entra dal link d'invito non ne ha bisogno).
+  if (req.url === '/api/login') {
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'POST' });
+      res.end();
+      return;
+    }
+    if (req.method === 'POST') {
+      res.setHeader('access-control-allow-origin', '*');
+      handleLogin(req, res);
+      return;
+    }
   }
 
   // Controllo leggero per Render e per il ping che tiene sveglio il server (UptimeRobot).

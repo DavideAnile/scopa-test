@@ -2,11 +2,20 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { RequireAuth } from '@/components/require-auth';
 import { MenuButton } from '@/components/menu-button';
 import { PlayingCard } from '@/components/playing-card';
 import { MaxContentWidth, Spacing, Table } from '@/constants/theme';
 
 export default function HomeScreen() {
+  return (
+    <RequireAuth>
+      <Home />
+    </RequireAuth>
+  );
+}
+
+function Home() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>

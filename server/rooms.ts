@@ -42,6 +42,8 @@ export interface LobbyDeps {
   /** Chiamata quando una partita finisce (per salvarla nello storico). */
   onGameFinished?: (entry: HistoryEntry) => void;
   history?: (playerId: string) => HistoryEntry[];
+  /** Se impostata, solo chi la manda nell'hello può creare partite (chi entra con l'invito no). */
+  password?: string;
 }
 
 // Niente lettere che si confondono a voce o a occhio (I/L/O).
@@ -54,6 +56,7 @@ export class Lobby {
   private roomOf = new Map<string, string>();
   private names = new Map<string, string>();
   private online = new Set<string>();
+  private authorized = new Set<string>();
   private random: () => number;
   private now: () => number;
   private chatId = 0;
@@ -67,9 +70,10 @@ export class Lobby {
   }
 
   /** Un giocatore si è (ri)collegato: se era in una stanza gli rimandiamo tutto. */
-  connect(playerId: string, name: string): Outgoing[] {
+  connect(playerId: string, name: string, password?: string): Outgoing[] {
     this.online.add(playerId);
     this.names.set(playerId, name);
+    if (password !== undefined && password === this.deps.password) this.authorized.add(playerId);
     const room = this.roomFor(playerId);
     if (!room) return [];
     const seat = this.seatOf(room, playerId)!;
@@ -90,11 +94,12 @@ export class Lobby {
   }
 
   handle(playerId: string, msg: ClientMsg): Outgoing[] {
-    if (msg.t === 'hello') return this.connect(msg.playerId, msg.name);
+    if (msg.t === 'hello') return this.connect(msg.playerId, msg.name, msg.password);
     if (!this.names.has(playerId)) return this.error(playerId, 'not_ready');
 
     switch (msg.t) {
       case 'create':
+        if (this.deps.password !== undefined && !this.authorized.has(playerId)) return this.error(playerId, 'not_authorized');
         return this.create(playerId, msg.series);
       case 'join':
         return this.join(playerId, msg.code);

@@ -5,6 +5,7 @@ import { WebSocket } from 'ws';
 
 import { type PlayerView, chooseBotMove } from '../supabase/functions/_shared/scopa/index.ts';
 
+import { PASSWORD } from './password.ts';
 import type { ClientMsg, ServerMsg } from './protocol.ts';
 
 const URL = process.argv[2] ?? 'ws://localhost:8787';
@@ -39,7 +40,7 @@ function client(name: string) {
 const stamp = Date.now().toString(36);
 const anna = client('anna');
 const bruno = client('bruno');
-await anna.send({ t: 'hello', playerId: `smoke-anna-${stamp}`, name: 'Anna' });
+await anna.send({ t: 'hello', playerId: `smoke-anna-${stamp}`, name: 'Anna', password: PASSWORD });
 await bruno.send({ t: 'hello', playerId: `smoke-bruno-${stamp}`, name: 'Bruno' });
 
 const created = anna.next<Extract<ServerMsg, { t: 'room' }>>((m) => m.t === 'room');

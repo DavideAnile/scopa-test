@@ -14,6 +14,14 @@ npm run typecheck
 npx expo lint
 ```
 
+## Accesso con password
+
+Chi apre l'app vede prima una schermata di login con la sola password (salvata poi sul dispositivo, si inserisce una volta sola). Chi arriva dal **link d'invito** non la vede: scrive il nome e preme **Entra**, senza poter creare partite né vedere lo storico.
+
+- La password è verificata dal **server** (`POST /api/login`) e sta solo nel codice del server (`server/password.ts`), non in quello che arriva al browser. Anche la creazione di una partita viene rifiutata dal server senza password valida.
+- Per cambiarla senza toccare il codice: su Render, nel servizio → **Environment** → aggiungi `SCOPA_PASSWORD` con il nuovo valore e salva (il servizio si riavvia). Chi aveva la vecchia password salvata dovrà inserire la nuova.
+- Dopo 10 tentativi sbagliati dallo stesso indirizzo il login si blocca per 1 minuto.
+
 ## Server online su Render (link fisso, Mac spento)
 
 Il file [render.yaml](render.yaml) descrive il servizio: un unico server gratuito che fa da arbitro delle partite e serve la versione web dell'app.

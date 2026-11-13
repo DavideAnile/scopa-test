@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { RequireAuth } from '@/components/require-auth';
 import { MaxContentWidth, Spacing, Table } from '@/constants/theme';
 import { online, useOnline } from '@/online/client';
 import { useWaitingText } from '@/online/use-waiting-text';
@@ -21,6 +22,14 @@ const BADGE = { won: 'V', lost: 'S', draw: 'P' } as const;
 const dateFormat = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 export default function HistoryScreen() {
+  return (
+    <RequireAuth>
+      <History />
+    </RequireAuth>
+  );
+}
+
+function History() {
   const { history, status, waitingSince } = useOnline();
   const waitingText = useWaitingText(waitingSince);
 

@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +18,7 @@ const STATUS_TEXT = {
 } as const;
 
 export default function OnlineHomeScreen() {
-  const { status, room, waitingSince } = useOnline();
+  const { status, room, waitingSince, auth } = useOnline();
   const waitingText = useWaitingText(waitingSince);
   // Il link d'invito (…/online?code=ABCD) precompila il codice.
   const params = useLocalSearchParams<{ code?: string }>();
@@ -60,6 +60,11 @@ export default function OnlineHomeScreen() {
     router.push('/online/room');
   };
 
+  // Senza login si arriva qui solo dal link d'invito (con il codice): modalità ospite, solo "Entra".
+  const guest = auth !== 'in';
+  if (auth === 'loading') return <View style={styles.container} />;
+  if (guest && !params.code) return <Redirect href="/login" />;
+
   if (!GAME_SERVER) {
     return (
       <Screen>
@@ -79,9 +84,13 @@ export default function OnlineHomeScreen() {
   return (
     <Screen>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.back}>‹ Home</Text>
-        </Pressable>
+        {guest ? (
+          <View />
+        ) : (
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <Text style={styles.back}>‹ Home</Text>
+          </Pressable>
+        )}
         <View style={styles.status}>
           <View style={[styles.dot, status === 'online' && styles.dotOnline]} />
           <Text style={styles.statusText}>{STATUS_TEXT[status]}</Text>
@@ -109,13 +118,15 @@ export default function OnlineHomeScreen() {
         <MenuButton label={`Torna alla partita ${room.code}`} onPress={() => router.push('/online/room')} />
       )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Crea una partita</Text>
-        <Text style={styles.text}>Una serie di 10 partite: vince chi ne vince di più. I pareggi non contano.</Text>
-        <View style={styles.row}>
-          <MenuButton label="Crea partita (serie da 10)" style={styles.grow} onPress={create} disabled={!cleanName} />
+      {!guest && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Crea una partita</Text>
+          <Text style={styles.text}>Una serie di 10 partite: vince chi ne vince di più. I pareggi non contano.</Text>
+          <View style={styles.row}>
+            <MenuButton label="Crea partita (serie da 10)" style={styles.grow} onPress={create} disabled={!cleanName} />
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Entra con un codice</Text>
@@ -135,12 +146,14 @@ export default function OnlineHomeScreen() {
         </View>
       </View>
 
-      <MenuButton
-        label="Storico partite"
-        variant="outline"
-        disabled={!cleanName}
-        onPress={() => ensureName() && router.push('/online/history')}
-      />
+      {!guest && (
+        <MenuButton
+          label="Storico partite"
+          variant="outline"
+          disabled={!cleanName}
+          onPress={() => ensureName() && router.push('/online/history')}
+        />
+      )}
     </Screen>
   );
 }

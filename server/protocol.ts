@@ -12,7 +12,8 @@ export function stickersAllowed(names: readonly (string | null | undefined)[]): 
 }
 
 export type ClientMsg =
-  | { t: 'hello'; playerId: string; name: string }
+  /** `password` (se l'utente ha fatto il login) serve per creare partite; il nome può essere ancora vuoto. */
+  | { t: 'hello'; playerId: string; name: string; password?: string }
   | { t: 'create'; series: SeriesLength }
   | { t: 'join'; code: string }
   | { t: 'play'; card: Card; capture: Card[]; moveNo: number }
@@ -72,7 +73,8 @@ export type ErrorCode =
   | 'game_over'
   | 'not_your_turn'
   | 'card_not_in_hand'
-  | 'illegal_capture';
+  | 'illegal_capture'
+  | 'not_authorized';
 
 export type ServerMsg =
   | { t: 'room'; room: RoomInfo }
@@ -92,8 +94,11 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const m = raw as Record<string, unknown>;
   switch (m.t) {
-    case 'hello':
-      return isString(m.playerId, 64) && isString(m.name, 40) ? { t: 'hello', playerId: m.playerId, name: m.name.trim() } : null;
+    case 'hello': {
+      const name = typeof m.name === 'string' && m.name.length <= 40 ? m.name.trim() : null;
+      if (!isString(m.playerId, 64) || name === null) return null;
+      return isString(m.password, 200) ? { t: 'hello', playerId: m.playerId, name, password: m.password } : { t: 'hello', playerId: m.playerId, name };
+    }
     case 'create':
       return m.series === 10 ? { t: 'create', series: m.series } : null;
     case 'join':

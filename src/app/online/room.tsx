@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -74,6 +74,8 @@ export default function RoomScreen() {
   }
 
   if (!room) {
+    // Creazione rifiutata dal server (password non valida): si torna al login.
+    if (error?.code === 'not_authorized') return <Redirect href="/login" />;
     if (error) {
       return (
         <Message title="Ops" text={ERROR_TEXT[error.code] ?? 'Qualcosa è andato storto.'}>

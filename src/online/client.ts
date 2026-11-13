@@ -1,25 +1,12 @@
-import Constants from 'expo-constants';
 import { useSyncExternalStore } from 'react';
-import { Platform } from 'react-native';
 
 import type { PlayerView } from '@scopa';
 import type { ChatMessage, ClientMsg, ErrorCode, HistoryEntry, RoomInfo, ServerMsg } from '@server/protocol';
 
-/**
- * Indirizzo del server di gioco. Su Expo Go lo imposta `npm run party`. Sul web la pagina viene
- * servita dal server di gioco stesso, quindi l'indirizzo è quello della pagina.
- */
-function resolveGameServer(): string | null {
-  const fromConfig: unknown = Constants.expoConfig?.extra?.gameServer;
-  if (typeof fromConfig === 'string' && fromConfig.length > 0) return fromConfig;
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const { protocol, host } = window.location;
-    return `${protocol === 'https:' ? 'wss' : 'ws'}://${host}`;
-  }
-  return null;
-}
+import { clearPassword } from './auth';
+import { GAME_SERVER } from './server-url';
 
-export const GAME_SERVER = resolveGameServer();
+export { GAME_SERVER };
 
 /** Link web da mandare all'amico (si gioca da Safari, senza installare niente). */
 export function inviteLink(code: string): string | null {
@@ -40,6 +27,8 @@ export interface OnlineState {
   waitingSince: number | null;
   /** Ultimo segnale "sta scrivendo" dell'avversario (null se ha smesso o ha inviato). */
   opponentTypingAt: number | null;
+  /** Login con password: 'loading' finché non si è letta quella salvata sul dispositivo. */
+  auth: 'loading' | 'in' | 'out';
 }
 
 const INITIAL: OnlineState = {
@@ -52,6 +41,7 @@ const INITIAL: OnlineState = {
   closedByOpponent: false,
   waitingSince: null,
   opponentTypingAt: null,
+  auth: 'loading',
 };
 
 /** Connessione al server con riconnessione automatica. Store esterno per useSyncExternalStore. */
@@ -64,6 +54,7 @@ class OnlineClient {
   private retry = 0;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private typingOn = false;
+  private password: string | null = null;
   private typingSentAt = 0;
 
   subscribe = (listener: () => void) => {
@@ -83,8 +74,15 @@ class OnlineClient {
   }
 
   /** Si collega (o aggiorna il nome se già collegato). */
+  /** Imposta lo stato del login (all'avvio con la password salvata, o dopo il login). */
+  setPassword(password: string | null) {
+    this.password = password;
+    this.set({ auth: password ? 'in' : 'out' });
+    if (this.hello) this.connect(this.hello.playerId, this.hello.name);
+  }
+
   connect(playerId: string, name: string) {
-    this.hello = { t: 'hello', playerId, name };
+    this.hello = this.password ? { t: 'hello', playerId, name, password: this.password } : { t: 'hello', playerId, name };
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(this.hello));
     else if (!this.ws) this.open();
   }
@@ -172,6 +170,12 @@ class OnlineClient {
       case 'error':
         // Una mossa doppia (tocco ripetuto) non è un errore da mostrare.
         if (msg.code === 'stale_move' || msg.code === 'not_your_turn') return;
+        // Password cambiata o non valida: si torna al login.
+        if (msg.code === 'not_authorized') {
+          clearPassword();
+          this.password = null;
+          return this.set({ auth: 'out', room: null, view: null, error: { code: msg.code, at: Date.now() } });
+        }
         return this.set({ error: { code: msg.code, at: Date.now() } });
     }
   }
