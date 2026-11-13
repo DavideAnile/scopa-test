@@ -31,18 +31,23 @@ export async function clearPassword() {
 
 export type LoginResult = 'ok' | 'wrong' | 'locked' | 'offline';
 
-/** Chiede al server se la password è giusta (la password vera esiste solo sul server). */
-export async function verifyPassword(password: string): Promise<LoginResult> {
-  if (!GAME_SERVER) return 'offline';
+/**
+ * Chiede al server se la password è giusta (la password vera esiste solo sul server).
+ * Con la password giusta il server dà anche il lasciapassare per gli sticker.
+ */
+export async function verifyPassword(password: string): Promise<{ result: LoginResult; stickerToken?: string }> {
+  if (!GAME_SERVER) return { result: 'offline' };
   try {
     const res = await fetch(`${GAME_SERVER.replace(/^ws/, 'http')}/api/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ password }),
     });
-    if (res.status === 429) return 'locked';
-    return res.ok ? 'ok' : 'wrong';
+    if (res.status === 429) return { result: 'locked' };
+    if (!res.ok) return { result: 'wrong' };
+    const body = (await res.json().catch(() => ({}))) as { stickerToken?: unknown };
+    return { result: 'ok', stickerToken: typeof body.stickerToken === 'string' ? body.stickerToken : undefined };
   } catch {
-    return 'offline';
+    return { result: 'offline' };
   }
 }

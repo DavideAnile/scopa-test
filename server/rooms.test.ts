@@ -97,6 +97,20 @@ describe('stanze', () => {
     expect(pick(out, 'anna', 'chat')).toHaveLength(1);
   });
 
+  it('il lasciapassare degli sticker arriva solo nelle partite con Davide', () => {
+    const withToken = new Lobby({ random: rng(3), stickerToken: () => 'gettone' });
+    withToken.connect('d', 'Davide');
+    withToken.connect('g', 'Giorgia');
+    const code = roomOf(withToken.handle('d', { t: 'create', series: 10 }), 'd').code;
+    expect(roomOf(withToken.handle('g', { t: 'join', code }), 'g').stickerToken).toBe('gettone');
+
+    const without = new Lobby({ random: rng(4), stickerToken: () => 'gettone' });
+    without.connect('a', 'Danilo');
+    without.connect('b', 'Claudia');
+    const code2 = roomOf(without.handle('a', { t: 'create', series: 10 }), 'a').code;
+    expect(roomOf(without.handle('b', { t: 'join', code: code2 }), 'b').stickerToken).toBeUndefined();
+  });
+
   it('sticker rifiutati nelle partite senza nessun Davide', () => {
     const { lobby } = setup();
     startGame(lobby);

@@ -12,7 +12,10 @@ export type Spot =
   | { kind: 'stack'; index: number; count: number; offset: number }
   /** Nel mazzetto di `owner`; con `scopa` la carta va di traverso, scoperta. */
   | { kind: 'pile'; owner: PlayerIndex; scopa?: number }
-  | { kind: 'deck' };
+  /** Il mazzo, dalla parte del mazziere. */
+  | { kind: 'deck' }
+  /** Un punto al centro del tavolo (spostamenti in multipli della larghezza di una carta): per la mescolata. */
+  | { kind: 'center'; dx: number; dy: number; rot: number };
 
 export interface Sprite {
   id: string;
@@ -35,6 +38,8 @@ export interface PileInfo {
 
 export interface Scene {
   you: PlayerIndex;
+  /** Il mazzo sta dalla sua parte. */
+  dealer: PlayerIndex;
   sprites: Sprite[];
   piles: Pair<PileInfo>;
   deckCount: number;
@@ -62,6 +67,7 @@ export const TIMING = {
   dealStagger: 110,
   pause: 160,
   scopaPause: 650,
+  shuffle: 200,
 } as const;
 
 const handSprites = (hand: readonly Card[]): Sprite[] =>
@@ -100,6 +106,7 @@ const pilesOf = (view: PlayerView): Pair<PileInfo> => [
 export function restScene(view: PlayerView): Scene {
   return {
     you: view.you,
+    dealer: view.dealer,
     sprites: [...tableSprites(view.table), ...oppSprites(view.handCounts[other(view.you)]), ...handSprites(view.hand)],
     piles: pilesOf(view),
     deckCount: view.deckCount,
@@ -129,8 +136,41 @@ export function dealRoundSteps(view: PlayerView): Step[] {
   const ordered = [...hands, ...tableSprites(view.table)].map(fromDeck);
   const scene: Scene = { ...restScene(view), sprites: ordered, deckCount: view.deckCount };
   return [
+    ...shuffleSteps(view),
     { scene, hold: ordered.length * TIMING.dealStagger + TIMING.deal },
     { scene: restScene(view), hold: 0, view },
+  ];
+}
+
+const SHUFFLE_CARDS = 6;
+
+/**
+ * Mescolata a inizio smazzata: il mazzo va al centro, si divide in due metà che si rimescolano
+ * due volte, poi torna dalla parte del mazziere da cui partirà la distribuzione.
+ */
+function shuffleSteps(view: PlayerView): Step[] {
+  const base = { ...restScene(view), sprites: [] as Sprite[], deckCount: 0 };
+  const cards = (spot: (i: number) => Spot, extra: Partial<Sprite> = {}): Sprite[] =>
+    Array.from({ length: SHUFFLE_CARDS }, (_, i) => ({
+      id: `shuffle-${i}`,
+      card: null,
+      spot: spot(i),
+      faceUp: false,
+      z: 700 + i,
+      duration: TIMING.shuffle,
+      ...extra,
+    }));
+  const stacked = (i: number): Spot => ({ kind: 'center', dx: 0, dy: -i * 0.03, rot: (i % 2 ? 1 : -1) * 2 });
+  const split = (i: number): Spot =>
+    i % 2 ? { kind: 'center', dx: 0.75, dy: -i * 0.03, rot: 10 } : { kind: 'center', dx: -0.75, dy: -i * 0.03, rot: -10 };
+  const step = (sprites: Sprite[], hold = TIMING.shuffle + 40): Step => ({ scene: { ...base, sprites }, hold });
+  return [
+    step(cards(stacked, { from: { kind: 'deck' }, duration: TIMING.fly }), TIMING.fly + 60),
+    step(cards(split)),
+    step(cards(stacked, { delay: 0 })),
+    step(cards(split)),
+    step(cards(stacked)),
+    step(cards(() => ({ kind: 'deck' }), { duration: TIMING.fly }), TIMING.fly),
   ];
 }
 
@@ -183,6 +223,7 @@ export function moveSteps(prev: PlayerView, next: PlayerView): Step[] {
   const hands = [...oppSprites(oppCountAfter), ...handSprites(handAfter)];
   const scene = (sprites: Sprite[], banner: Scene['banner'] = null): Scene => ({
     you: me,
+    dealer: prev.dealer,
     sprites,
     piles: [{ ...piles[0], scope: [...piles[0].scope] }, { ...piles[1], scope: [...piles[1].scope] }],
     deckCount: prev.deckCount,

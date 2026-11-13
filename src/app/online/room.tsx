@@ -139,10 +139,11 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
   const opponentTyping = useOpponentTyping(state.opponentTypingAt);
 
   // Sticker (foto personali) solo se uno dei due si chiama Davide: solo allora si scaricano.
-  const stickers = stickersAllowed(room.names);
+  // Il lasciapassare arriva dal login o dalla stanza (solo nelle partite con Davide).
+  const stickerToken = stickersAllowed(room.names) ? state.stickerToken : null;
   useEffect(() => {
-    if (stickers) preloadStickers();
-  }, [stickers]);
+    if (stickerToken) preloadStickers(stickerToken);
+  }, [stickerToken]);
   const bubbles: Pair<Bubble | null> = [bubbleOf(0), bubbleOf(1)];
   if (opponentTyping) bubbles[other(room.you)] = { id: -1, text: '', typing: true };
 
@@ -176,6 +177,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
   return (
     <>
       <GameTable
+        stickerToken={stickerToken}
         view={view}
         scene={scene}
         shown={shown}
@@ -192,7 +194,7 @@ function OnlineGame({ room, view, state }: { room: RoomInfo; view: PlayerView; s
             you={me}
             onSend={(text) => online.send({ t: 'chat', text })}
             onSendSticker={(sticker) => online.send({ t: 'chat', sticker })}
-            stickersEnabled={stickers}
+            stickerToken={stickerToken}
             onTyping={(on) => online.setTyping(on)}
             typingName={opponentTyping ? names[opp] : null}
           />

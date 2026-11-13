@@ -5,6 +5,7 @@ import { RequireAuth } from '@/components/require-auth';
 import { GameTable } from '@/components/game-table';
 import { RoundSummary } from '@/components/round-summary';
 import { useTableScene } from '@/game/use-table-scene';
+import { useOnline } from '@/online/client';
 import { loadIdentity } from '@/online/identity';
 import {
   type Card,
@@ -56,6 +57,8 @@ function LocalGame() {
     loadIdentity().then((id) => id.name && setMyName(id.name));
   }, []);
   const names: Pair<string> = [myName, 'Computer'];
+  // Avatar di Davide anche contro il computer, con il lasciapassare avuto dal login.
+  const { stickerToken } = useOnline();
 
   useEffect(() => {
     if (state.status !== 'playing' || state.turn !== BOT || busy) return;
@@ -76,6 +79,7 @@ function LocalGame() {
   return (
     <>
       <GameTable
+        stickerToken={stickerToken}
         view={view}
         scene={scene}
         shown={shown}

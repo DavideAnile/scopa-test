@@ -75,3 +75,23 @@ describe('banner di scopa e settebello', () => {
     expect(moveSteps(playerView(s, 0), playerView(next, 0)).some((st) => st.scene.banner)).toBe(false);
   });
 });
+
+describe('mescolata e distribuzione da mazziere', () => {
+  it('a inizio smazzata: mescolata al centro, poi distribuzione dal mazzo del mazziere', () => {
+    for (const dealer of [0, 1] as const) {
+      const s = newGame({ seed: 4, series: 10, dealer });
+      const steps = dealRoundSteps(playerView(s, 0));
+      const shuffle = steps.filter((st) => st.scene.sprites.some((sp) => sp.id.startsWith('shuffle-')));
+      expect(shuffle.length).toBeGreaterThanOrEqual(5);
+      // durante la mescolata solo carte coperte "di scena", niente carte vere
+      for (const st of shuffle) expect(st.scene.sprites.every((sp) => sp.card === null && !sp.faceUp)).toBe(true);
+      expect(shuffle.some((st) => st.scene.sprites.some((sp) => sp.spot.kind === 'center'))).toBe(true);
+      // poi le carte vere partono una alla volta dal mazzo, prima il non-mazziere
+      const deal = steps[shuffle.length];
+      expect(deal.scene.sprites.every((sp) => sp.from?.kind === 'deck')).toBe(true);
+      const firstSpot = deal.scene.sprites[0].spot.kind;
+      expect(firstSpot).toBe(dealer === 0 ? 'opp' : 'hand');
+      expect(steps.at(-1)!.scene.dealer).toBe(dealer);
+    }
+  });
+});

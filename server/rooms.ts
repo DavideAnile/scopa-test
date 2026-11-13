@@ -44,6 +44,8 @@ export interface LobbyDeps {
   history?: (playerId: string) => HistoryEntry[];
   /** Se impostata, solo chi la manda nell'hello può creare partite (chi entra con l'invito no). */
   password?: string;
+  /** Lasciapassare per gli sticker, dato ai giocatori delle partite con Davide. */
+  stickerToken?: () => string;
 }
 
 // Niente lettere che si confondono a voce o a occhio (I/L/O).
@@ -278,6 +280,9 @@ export class Lobby {
       connected: [this.online.has(room.seats[0].id), !!room.seats[1] && this.online.has(room.seats[1].id)],
       ready: room.ready,
       rematch: room.rematch,
+      ...(this.deps.stickerToken && stickersAllowed(room.seats.map((s) => s?.name))
+        ? { stickerToken: this.deps.stickerToken() }
+        : {}),
     };
   }
 

@@ -12,6 +12,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 import { HistoryStore } from './history.ts';
 import { PASSWORD } from './password.ts';
+import { stickerFile, stickerToken, verifyStickerToken } from './stickers.ts';
 import { type ServerMsg, parseClientMsg } from './protocol.ts';
 import { Lobby, type Outgoing } from './rooms.ts';
 
@@ -24,6 +25,7 @@ const lobby = new Lobby({
   onGameFinished: (entry) => history.add(entry),
   history: (playerId) => history.forPlayer(playerId),
   password: PASSWORD,
+  stickerToken: () => stickerToken(),
 });
 
 // Login: dopo 10 password sbagliate dallo stesso indirizzo, 1 minuto di blocco.
@@ -60,7 +62,7 @@ function handleLogin(req: IncomingMessage, res: ServerResponse) {
       failures.set(ip, { count, until: count >= MAX_FAILURES ? now + LOCK_MS : 0 });
     }
     res.writeHead(ok ? 200 : 401, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-    res.end(JSON.stringify({ ok }));
+    res.end(JSON.stringify(ok ? { ok, stickerToken: stickerToken() } : { ok }));
   });
 }
 
@@ -87,6 +89,8 @@ const TYPES: Record<string, string> = {
   '.json': 'application/json',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
   '.ttf': 'font/ttf',
@@ -128,6 +132,29 @@ const http = createServer((req, res) => {
       handleLogin(req, res);
       return;
     }
+  }
+
+  // Sticker personali: solo con un lasciapassare valido (login o partita con Davide).
+  if (req.url?.startsWith('/api/sticker/')) {
+    const url = new URL(req.url, 'http://x');
+    const file = stickerFile(url.pathname.slice('/api/sticker/'.length));
+    if (!file) {
+      res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('sticker non valido');
+      return;
+    }
+    if (!verifyStickerToken(url.searchParams.get('t') ?? '')) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' });
+      res.end('non autorizzato');
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': TYPES[extname(file)] ?? 'image/webp',
+      'cache-control': 'private, max-age=43200',
+      'access-control-allow-origin': '*',
+    });
+    createReadStream(file).pipe(res);
+    return;
   }
 
   // Controllo leggero per Render e per il ping che tiene sveglio il server (UptimeRobot).

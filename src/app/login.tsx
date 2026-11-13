@@ -29,7 +29,7 @@ export default function LoginScreen() {
     if (!password || waitingSince !== null) return;
     setError(null);
     setWaitingSince(Date.now());
-    const result = await verifyPassword(password);
+    const { result, stickerToken } = await verifyPassword(password);
     setWaitingSince(null);
     if (result !== 'ok') {
       setError(ERRORS[result]);
@@ -37,6 +37,7 @@ export default function LoginScreen() {
     }
     await savePassword(password);
     online.setPassword(password);
+    if (stickerToken) online.setStickerToken(stickerToken);
     router.replace('/');
   };
 

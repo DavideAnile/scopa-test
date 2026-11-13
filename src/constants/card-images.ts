@@ -1,8 +1,10 @@
 // Metro richiede require() letterali, quindi una voce per carta. Immagini: assets/cards (pubblico dominio, vedi CREDITS.txt).
 import { Asset } from 'expo-asset';
+import { Image as ExpoImage } from 'expo-image';
 import { Platform } from 'react-native';
 
-import { STICKERS } from '@/constants/stickers';
+import { STICKER_IDS } from '@/constants/stickers';
+import { stickerUri } from '@/online/stickers';
 import type { Card } from '@scopa';
 
 // require() di un'immagine restituisce un id numerico dell'asset.
@@ -66,9 +68,12 @@ export function preloadCardImages() {
   preloadModules(Object.values(CARD_IMAGES));
 }
 
-/** Sticker della chat: si scaricano solo nelle partite in cui sono disponibili (c'è Davide). */
-export function preloadStickers() {
-  preloadModules(Object.values(STICKERS));
+/** Sticker della chat: si scaricano solo quando sono disponibili (login o partita con Davide). */
+export function preloadStickers(token: string) {
+  const uris = STICKER_IDS.map((id) => stickerUri(id, token)).filter((u): u is string => u !== null);
+  ExpoImage.prefetch(uris).catch(() => {
+    // Non è grave: gli sticker si caricheranno quando servono.
+  });
 }
 
 function preloadModules(modules: ImageAsset[]) {

@@ -17,10 +17,11 @@ import Animated, {
 
 import { CardBack, CardFace, cardBox } from '@/components/playing-card';
 import { CARD_ASPECT } from '@/constants/card-images';
-import { STICKERS } from '@/constants/stickers';
+import { stickerUri } from '@/online/stickers';
 import { Table } from '@/constants/theme';
 import type { PileInfo, Scene, Spot, Sprite } from '@/game/scene';
 import { type Card, type Pair, type PlayerIndex, other } from '@scopa';
+import { avatarFor } from '@server/protocol';
 
 const OPP_SCALE = 0.62;
 const PILE_SCALE = 0.6;
@@ -113,7 +114,10 @@ function scopaPlace(L: Layout, mine: boolean, k: number): Place {
   return { ...p, y: p.y + (mine ? -1 : 1) * (6 + k * 7), rot: 90 };
 }
 
-function spotPlace(L: Layout, spot: Spot, you: PlayerIndex): Place {
+/** Il mazzo sta a destra, dalla parte del mazziere. */
+const deckY = (L: Layout, dealerIsMe: boolean) => (dealerIsMe ? L.handY : L.oppY);
+
+function spotPlace(L: Layout, spot: Spot, you: PlayerIndex, dealer: PlayerIndex): Place {
   switch (spot.kind) {
     case 'hand': {
       // Centrata sullo schermo, ma senza finire sopra il mazzetto a sinistra.
@@ -141,7 +145,14 @@ function spotPlace(L: Layout, spot: Spot, you: PlayerIndex): Place {
       return spot.scopa !== undefined ? scopaPlace(L, mine, spot.scopa) : pilePlace(L, mine);
     }
     case 'deck':
-      return { x: L.deckX, y: L.oppY, rot: 0, scale: DECK_SCALE };
+      return { x: L.deckX, y: deckY(L, dealer === you), rot: 0, scale: DECK_SCALE };
+    case 'center':
+      return {
+        x: L.table.x + L.table.w / 2 + spot.dx * L.cardW,
+        y: L.table.y + L.table.h / 2 + spot.dy * L.cardW,
+        rot: spot.rot,
+        scale: 1,
+      };
   }
 }
 
@@ -152,9 +163,15 @@ type Props = {
   names: [string, string];
   /** Ultimo messaggio della chat di ciascun giocatore (indicizzato per giocatore). */
   bubbles?: Pair<Bubble | null>;
+  /** Lasciapassare per sticker e avatar; senza, non si mostrano. */
+  stickerToken?: string | null;
 };
 
-export function Board({ scene, onPressCard, highlighted, names, bubbles }: Props) {
+export function Board({ scene, onPressCard, highlighted, names, bubbles, stickerToken }: Props) {
+  const stickerSrc = (id: string | null | undefined) => {
+    const uri = id && stickerToken ? stickerUri(id, stickerToken) : null;
+    return uri ? { uri } : null;
+  };
   const [layout, setLayout] = useState<Layout | null>(null);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -173,22 +190,33 @@ export function Board({ scene, onPressCard, highlighted, names, bubbles }: Props
               { left: layout.table.x, top: layout.table.y, width: layout.table.w, height: layout.table.h },
             ]}
           />
-          <Deck layout={layout} count={scene.deckCount} />
-          <Pile layout={layout} pile={scene.piles[opp]} mine={false} name={names[opp]} />
-          <Pile layout={layout} pile={scene.piles[me]} mine name={names[me]} />
+          <Deck layout={layout} count={scene.deckCount} mine={scene.dealer === me} />
+          <Pile layout={layout} pile={scene.piles[opp]} mine={false} name={names[opp]} avatar={stickerSrc(avatarFor(names[opp]))} />
+          <Pile layout={layout} pile={scene.piles[me]} mine name={names[me]} avatar={stickerSrc(avatarFor(names[me]))} />
           {scene.sprites.map((sprite) => (
             <SpriteView
               key={sprite.id}
               sprite={sprite}
               layout={layout}
               you={me}
+              dealer={scene.dealer}
               highlighted={sprite.card !== null && !!highlighted?.includes(sprite.card)}
               onPress={sprite.card && onPressCard ? () => onPressCard(sprite.card!) : undefined}
             />
           ))}
           {([opp, me] as const).map((p) => {
             const bubble = bubbles?.[p];
-            return bubble ? <PileBubble key={p} layout={layout} mine={p === me} name={names[p]} bubble={bubble} /> : null;
+            return bubble ? (
+              <PileBubble
+                key={p}
+                layout={layout}
+                mine={p === me}
+                name={names[p]}
+                bubble={bubble}
+                avatar={!!stickerSrc(avatarFor(names[p]))}
+                sticker={stickerSrc(bubble.sticker)}
+              />
+            ) : null;
           })}
           {scene.banner && (
             <Animated.View
@@ -211,18 +239,20 @@ function SpriteView({
   sprite,
   layout,
   you,
+  dealer,
   highlighted,
   onPress,
 }: {
   sprite: Sprite;
   layout: Layout;
   you: PlayerIndex;
+  dealer: PlayerIndex;
   highlighted: boolean;
   onPress?: () => void;
 }) {
-  const target = spotPlace(layout, sprite.spot, you);
+  const target = spotPlace(layout, sprite.spot, you, dealer);
   const [initial] = useState(() => ({
-    place: sprite.from ? spotPlace(layout, sprite.from, you) : target,
+    place: sprite.from ? spotPlace(layout, sprite.from, you, dealer) : target,
     face: (sprite.from ? sprite.fromFaceUp ?? sprite.faceUp : sprite.faceUp) ? 1 : 0,
   }));
 
@@ -261,7 +291,13 @@ function SpriteView({
   const backStyle = useAnimatedStyle(() => ({ opacity: face.get() >= 0.5 ? 0 : 1 }));
 
   return (
-    <Animated.View style={[styles.sprite, { width, height, zIndex: sprite.z }, moveStyle]}>
+    <Animated.View
+      style={[
+        styles.sprite,
+        sprite.z >= 500 ? styles.shadowLifted : styles.shadow,
+        { width, height, zIndex: sprite.z, borderRadius: cardBox(layout.cardW).borderRadius },
+        moveStyle,
+      ]}>
       <Pressable onPress={onPress} disabled={!onPress} style={StyleSheet.absoluteFill}>
         {sprite.card && (
           <Animated.View style={[StyleSheet.absoluteFill, frontStyle]}>
@@ -276,13 +312,14 @@ function SpriteView({
   );
 }
 
-function Deck({ layout, count }: { layout: Layout; count: number }) {
+function Deck({ layout, count, mine }: { layout: Layout; count: number; mine: boolean }) {
   if (count === 0) return null;
   const w = layout.cardW * DECK_SCALE;
   const h = w * CARD_ASPECT;
-  const layers = Math.min(4, Math.ceil(count / 8));
+  // Lo spessore segue le carte rimaste: si assottiglia mentre si distribuisce.
+  const layers = Math.min(8, Math.ceil(count / 4));
   return (
-    <View style={[styles.static, { left: layout.deckX - w / 2, top: layout.oppY - h / 2 }]} pointerEvents="none">
+    <View style={[styles.static, { left: layout.deckX - w / 2, top: deckY(layout, mine) - h / 2 }]} pointerEvents="none">
       {Array.from({ length: layers }, (_, i) => (
         <View key={i} style={{ position: 'absolute', left: -i * 1.5, top: -i * 1.5 }}>
           <CardBack width={w} />
@@ -293,11 +330,24 @@ function Deck({ layout, count }: { layout: Layout; count: number }) {
   );
 }
 
-function Pile({ layout, pile, mine, name }: { layout: Layout; pile: PileInfo; mine: boolean; name: string }) {
+function Pile({
+  layout,
+  pile,
+  mine,
+  name,
+  avatar,
+}: {
+  layout: Layout;
+  pile: PileInfo;
+  mine: boolean;
+  name: string;
+  avatar: { uri: string } | null;
+}) {
   const p = pilePlace(layout, mine);
   const w = layout.cardW * PILE_SCALE;
   const h = w * CARD_ASPECT;
-  const layers = pile.count === 0 ? 0 : Math.min(5, Math.ceil(pile.count / 6));
+  // Lo spessore cresce davvero: uno strato ogni 3 carte prese (fino a 12), sfalsati di 1 px.
+  const layers = pile.count === 0 ? 0 : Math.min(12, Math.ceil(pile.count / 3));
   return (
     <View style={[styles.static, { left: p.x - w / 2, top: p.y - h / 2, width: w, height: h }]} pointerEvents="none">
       {pile.scope.map((card, k) => {
@@ -311,15 +361,18 @@ function Pile({ layout, pile, mine, name }: { layout: Layout; pile: PileInfo; mi
         );
       })}
       {Array.from({ length: layers }, (_, i) => (
-        <View key={i} style={{ position: 'absolute', left: -i * 1.5, top: -i * 1.5 }}>
+        <View key={i} style={[styles.pileLayer, { left: -i, top: -i }]}>
           <CardBack width={w} />
         </View>
       ))}
       {pile.count === 0 && <View style={[styles.emptyPile, cardBox(w)]} />}
       <View style={[styles.pileLabel, mine ? { bottom: h + 6 } : { top: h + 6 }]}>
-        <Text style={styles.pileName} numberOfLines={1}>
-          {name}
-        </Text>
+        <View style={styles.nameRow}>
+          {avatar && <Image source={avatar} style={styles.avatar} contentFit="cover" />}
+          <Text style={styles.pileName} numberOfLines={1}>
+            {name}
+          </Text>
+        </View>
         <Text style={styles.pileCount}>
           {pile.count}
           {pile.scope.length > 0 ? `  ★${pile.scope.length}` : ''}
@@ -333,7 +386,21 @@ function Pile({ layout, pile, mine, name }: { layout: Layout; pile: PileInfo; mi
  * Messaggio della chat accanto al nome, sopra le carte. Ricalca la posizione dell'etichetta del
  * mazzetto: il nome invisibile fa da segnaposto, così la nuvoletta parte subito dopo il nome.
  */
-function PileBubble({ layout, mine, name, bubble }: { layout: Layout; mine: boolean; name: string; bubble: Bubble }) {
+function PileBubble({
+  layout,
+  mine,
+  name,
+  bubble,
+  avatar,
+  sticker,
+}: {
+  layout: Layout;
+  mine: boolean;
+  name: string;
+  bubble: Bubble;
+  avatar: boolean;
+  sticker: { uri: string } | null;
+}) {
   const p = pilePlace(layout, mine);
   const w = layout.cardW * PILE_SCALE;
   const h = w * CARD_ASPECT;
@@ -343,18 +410,21 @@ function PileBubble({ layout, mine, name, bubble }: { layout: Layout; mine: bool
       {/* Larghezza esplicita: senza, la riga prenderebbe quella del mazzetto e il testo andrebbe a capo. */}
       <View style={[styles.bubbleRow, mine ? { bottom: h + 6 } : { top: h + 6 }, { width: layout.w - left - PAD }]}>
         <View style={styles.spacer}>
-          <Text style={styles.pileName} numberOfLines={1}>
-            {name}
-          </Text>
+          <View style={styles.nameRow}>
+            {avatar && <View style={styles.avatar} />}
+            <Text style={styles.pileName} numberOfLines={1}>
+              {name}
+            </Text>
+          </View>
           <Text style={styles.pileCount}>0</Text>
         </View>
-        {bubble.typing ? <TypingBubble /> : <SpeechBubble key={bubble.id} text={bubble.text} sticker={bubble.sticker} />}
+        {bubble.typing ? <TypingBubble /> : <SpeechBubble key={bubble.id} text={bubble.text} sticker={sticker} />}
       </View>
     </View>
   );
 }
 
-function SpeechBubble({ text, sticker }: { text: string; sticker?: string }) {
+function SpeechBubble({ text, sticker }: { text: string; sticker: { uri: string } | null }) {
   const [visible, setVisible] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setVisible(false), BUBBLE_MS);
@@ -363,8 +433,8 @@ function SpeechBubble({ text, sticker }: { text: string; sticker?: string }) {
   if (!visible) return null;
   return (
     <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(300)} style={sticker ? null : styles.bubble}>
-      {sticker && STICKERS[sticker] ? (
-        <Image source={STICKERS[sticker]} style={styles.bubbleSticker} contentFit="contain" />
+      {sticker ? (
+        <Image source={sticker} style={styles.bubbleSticker} contentFit="contain" />
       ) : (
         <Text style={styles.bubbleText} numberOfLines={3}>
           {text || '[sticker]'}
@@ -409,16 +479,24 @@ const styles = StyleSheet.create({
   tableFelt: {
     position: 'absolute',
     borderRadius: 22,
-    backgroundColor: Table.feltDark,
+    // Area di gioco un po' più scura del panno, con l'ombra ai bordi per dare profondità.
+    backgroundColor: 'rgba(10, 45, 27, 0.55)',
     borderWidth: 1,
     borderColor: '#FFFFFF14',
+    boxShadow: 'inset 0 0 36px rgba(0, 0, 0, 0.5)',
   },
   sprite: { position: 'absolute', left: 0, top: 0 },
+  // Ombre morbide: più marcate per le carte in volo (sollevate dal tavolo).
+  shadow: { boxShadow: '0 3px 8px rgba(0, 0, 0, 0.3)' },
+  shadowLifted: { boxShadow: '0 10px 20px rgba(0, 0, 0, 0.45)' },
   static: { position: 'absolute' },
   countLabel: { position: 'absolute', textAlign: 'center', color: Table.feltTextMuted, fontSize: 12, fontWeight: 700 },
+  pileLayer: { position: 'absolute', boxShadow: '1px 1px 2px rgba(0, 0, 0, 0.35)', borderRadius: 4 },
   emptyPile: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#FFFFFF40', backgroundColor: 'transparent' },
-  pileLabel: { position: 'absolute', left: -8, width: 90, gap: 1 },
-  pileName: { color: Table.feltText, fontSize: 12, fontWeight: 700 },
+  pileLabel: { position: 'absolute', left: -8, width: 130, gap: 1 },
+  pileName: { color: Table.feltText, fontSize: 12, fontWeight: 700, flexShrink: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  avatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: Table.cardFace, backgroundColor: Table.feltDark },
   pileCount: { color: Table.accent, fontSize: 12, fontWeight: 800 },
   bubbleLayer: { zIndex: 950 },
   bubbleRow: { position: 'absolute', left: -8, flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

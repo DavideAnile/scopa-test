@@ -15,8 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { STICKERS, STICKER_IDS } from '@/constants/stickers';
+import { STICKER_IDS } from '@/constants/stickers';
 import { Table } from '@/constants/theme';
+import { stickerUri } from '@/online/stickers';
 import type { PlayerIndex } from '@scopa';
 import { type ChatMessage, MAX_CHAT_LENGTH } from '@server/protocol';
 
@@ -27,15 +28,20 @@ type Props = {
   you: PlayerIndex;
   onSend: (text: string) => void;
   onSendSticker: (id: string) => void;
-  /** Sticker disponibili (solo se in partita c'è Davide). */
-  stickersEnabled: boolean;
+  /** Lasciapassare per gli sticker; null = sticker non disponibili (serve Davide in partita). */
+  stickerToken: string | null;
   /** Avvisa che stai scrivendo (true) o hai smesso (false). */
   onTyping?: (on: boolean) => void;
   /** Nome dell'avversario se sta scrivendo adesso, altrimenti null. */
   typingName?: string | null;
 };
 
-export function ChatPanel({ messages, you, onSend, onSendSticker, stickersEnabled, onTyping, typingName }: Props) {
+export function ChatPanel({ messages, you, onSend, onSendSticker, stickerToken, onTyping, typingName }: Props) {
+  const stickersEnabled = stickerToken !== null;
+  const stickerSource = (id: string) => {
+    const uri = stickerToken ? stickerUri(id, stickerToken) : null;
+    return uri ? { uri } : null;
+  };
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(0);
   const [draft, setDraft] = useState('');
@@ -111,7 +117,7 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, stickersEnable
               {messages.map((m) => {
                 const mine = m.from === you;
                 if (m.sticker) {
-                  const source = STICKERS[m.sticker];
+                  const source = stickerSource(m.sticker);
                   return (
                     <View key={m.id} style={[styles.stickerMsg, mine ? styles.alignEnd : styles.alignStart]}>
                       {!mine && <Text style={styles.author}>{m.name}</Text>}
@@ -177,7 +183,7 @@ export function ChatPanel({ messages, you, onSend, onSendSticker, stickersEnable
                     onPress={() => sendSticker(id)}
                     accessibilityLabel={`Invia ${id}`}
                     style={({ pressed }) => [styles.stickerCell, pressed && styles.pressed]}>
-                    <Image source={STICKERS[id]} style={styles.stickerThumb} contentFit="contain" />
+                    <Image source={stickerSource(id)} style={styles.stickerThumb} contentFit="contain" />
                   </Pressable>
                 ))}
               </ScrollView>

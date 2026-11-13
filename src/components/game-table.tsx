@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { type ReactNode, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Board, type Bubble } from '@/components/board';
@@ -8,6 +8,9 @@ import { CaptureChooser } from '@/components/capture-chooser';
 import { Table } from '@/constants/theme';
 import type { Scene } from '@/game/scene';
 import { type Card, type Pair, type PlayerView, decidedRounds, legalCaptures, matchCapture, other } from '@scopa';
+
+/** Panno verde con grana fine (si ripete come una piastrella). */
+const FELT = require('@/assets/table/felt.png');
 
 type Props = {
   /** Stato reale e aggiornato (per decidere le mosse). */
@@ -27,9 +30,24 @@ type Props = {
   bubbles?: Pair<Bubble | null>;
   /** Nome dell'avversario se sta scrivendo in chat: lo si dice nella riga in basso. */
   typingName?: string | null;
+  /** Lasciapassare per sticker e avatar. */
+  stickerToken?: string | null;
 };
 
-export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, headerRight, notice, bubbles, typingName }: Props) {
+export function GameTable({
+  view,
+  scene,
+  shown,
+  busy,
+  names,
+  onPlay,
+  onExit,
+  headerRight,
+  notice,
+  bubbles,
+  typingName,
+  stickerToken,
+}: Props) {
   const me = view.you;
   const opp = other(me);
   const myTurn = view.status === 'playing' && view.turn === me && !busy;
@@ -84,7 +102,7 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
   if (typing) hint = `${typingName} sta scrivendo…`;
 
   return (
-    <View style={styles.felt}>
+    <ImageBackground source={FELT} resizeMode="repeat" style={styles.felt}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.topBar}>
           <Pressable onPress={onExit} hitSlop={12}>
@@ -105,7 +123,14 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
           </View>
         )}
 
-        <Board scene={scene} names={[names[0], names[1]]} onPressCard={playCard} highlighted={chosen} bubbles={bubbles} />
+        <Board
+          scene={scene}
+          names={[names[0], names[1]]}
+          onPressCard={playCard}
+          highlighted={chosen}
+          bubbles={bubbles}
+          stickerToken={stickerToken}
+        />
 
         <View style={styles.hintRow}>
           <Text style={[styles.hint, (myTurn || typing) && styles.hintActive]}>{hint}</Text>
@@ -117,7 +142,7 @@ export function GameTable({ view, scene, shown, busy, names, onPlay, onExit, hea
         onChoose={(capture) => choice && play(choice.card, capture)}
         onCancel={() => setChoice(null)}
       />
-    </View>
+    </ImageBackground>
   );
 }
 

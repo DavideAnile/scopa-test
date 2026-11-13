@@ -6,6 +6,10 @@ import { type Card, type Pair, type PlayerIndex, type PlayerView, type SeriesLen
 export const MAX_CHAT_LENGTH = 500;
 const STICKER_ID = /^[a-z0-9-]{1,60}$/;
 
+/** Foto profilo (uno sticker) per nome, confrontato senza maiuscole né spazi. */
+const AVATARS: Record<string, string> = { davide: 'sticker-15', giorgia: 'sticker-12' };
+export const avatarFor = (name: string | null | undefined): string | null => AVATARS[name?.trim().toLowerCase() ?? ''] ?? null;
+
 /** Gli sticker (foto personali) sono disponibili solo nelle partite in cui uno dei due si chiama Davide. */
 export function stickersAllowed(names: readonly (string | null | undefined)[]): boolean {
   return names.some((n) => n?.trim().toLowerCase() === 'davide');
@@ -47,6 +51,8 @@ export interface RoomInfo {
   ready: Pair<boolean>;
   /** Chi ha chiesto la rivincita a serie finita. */
   rematch: Pair<boolean>;
+  /** Lasciapassare per scaricare gli sticker: solo nelle partite con Davide. */
+  stickerToken?: string;
 }
 
 export interface HistoryEntry {

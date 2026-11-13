@@ -29,6 +29,8 @@ export interface OnlineState {
   opponentTypingAt: number | null;
   /** Login con password: 'loading' finché non si è letta quella salvata sul dispositivo. */
   auth: 'loading' | 'in' | 'out';
+  /** Lasciapassare per scaricare gli sticker (dal login o dalla stanza con Davide). */
+  stickerToken: string | null;
 }
 
 const INITIAL: OnlineState = {
@@ -42,6 +44,7 @@ const INITIAL: OnlineState = {
   waitingSince: null,
   opponentTypingAt: null,
   auth: 'loading',
+  stickerToken: null,
 };
 
 /** Connessione al server con riconnessione automatica. Store esterno per useSyncExternalStore. */
@@ -79,6 +82,10 @@ class OnlineClient {
     this.password = password;
     this.set({ auth: password ? 'in' : 'out' });
     if (this.hello) this.connect(this.hello.playerId, this.hello.name);
+  }
+
+  setStickerToken(token: string) {
+    if (token !== this.state.stickerToken) this.set({ stickerToken: token });
   }
 
   connect(playerId: string, name: string) {
@@ -148,7 +155,11 @@ class OnlineClient {
   private receive(msg: ServerMsg) {
     switch (msg.t) {
       case 'room':
-        return this.set({ room: msg.room, closedByOpponent: false });
+        return this.set({
+          room: msg.room,
+          closedByOpponent: false,
+          ...(msg.room.stickerToken ? { stickerToken: msg.room.stickerToken } : {}),
+        });
       case 'view':
         return this.set({ view: msg.view });
       case 'chatLog':

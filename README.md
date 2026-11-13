@@ -68,17 +68,21 @@ Altri comandi:
 - `npm run server`: solo il server di gioco (porta 8787; serve anche `dist-web` se esiste)
 - `npm run server:smoke`: con il server avviato, due client finti giocano una partita intera
 
-## Sticker della chat
+## Sticker della chat e avatar
 
-Gli sticker sono in `assets/stickers/` (`.webp`, `.png` o `.gif`; nomi in minuscolo con cifre e trattini, es. `sticker-20.webp`). Per aggiungerne:
+Gli sticker stanno in `server/stickers/` (`.webp`, `.png` o `.gif`; nomi in minuscolo con cifre e trattini, es. `sticker-20.webp`). **Non fanno parte del sito pubblico**: il server li manda (`/api/sticker/<id>`) solo a chi ha un lasciapassare firmato, valido fino a 24 ore, che ricevono:
+- chi fa il login con la password;
+- chi è in una partita in cui uno dei due giocatori si chiama "Davide" (così anche chi entra dal link d'invito li vede).
+
+Per aggiungerne:
 
 ```bash
-cp ~/Desktop/nuovi-sticker/*.webp assets/stickers/
-npm run stickers     # rigenera l'elenco in src/constants/stickers.ts
+cp ~/Desktop/nuovi-sticker/*.webp server/stickers/
+npm run stickers     # rigenera l'elenco degli id in src/constants/stickers.ts
 git add -A && git commit -m "Nuovi sticker" && git push
 ```
 
-Nella chat si aprono con il pulsante **Sticker**, che compare (e gli sticker vengono scaricati) solo nelle partite in cui uno dei due giocatori si chiama "Davide"; il server rifiuta gli sticker nelle altre. Non è una protezione vera: i file restano pubblicati sul sito e il nome non è verificato, quindi chi conosce gli indirizzi dei file o si chiama "Davide" può vederli.
+Gli **avatar** accanto ai nomi sono sticker scelti per nome (`avatarFor` in `server/protocol.ts`: Davide → `sticker-15`, Giorgia → `sticker-12`) e seguono le stesse regole.
 
 ## Struttura
 

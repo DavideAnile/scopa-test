@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { preloadCardImages } from '@/constants/card-images';
-import { loadPassword } from '@/online/auth';
+import { clearPassword, loadPassword, verifyPassword } from '@/online/auth';
 import { online } from '@/online/client';
 
 export default function RootLayout() {
@@ -11,8 +11,19 @@ export default function RootLayout() {
 
   useEffect(() => {
     preloadCardImages();
-    // Login: se la password è già salvata sul dispositivo si entra direttamente.
-    loadPassword().then((pw) => online.setPassword(pw));
+    // Login: se la password è già salvata sul dispositivo si entra direttamente; in sottofondo
+    // la si ricontrolla (e si prende il lasciapassare per gli sticker). Se è cambiata, si esce.
+    loadPassword().then(async (pw) => {
+      online.setPassword(pw);
+      if (!pw) return;
+      const { result, stickerToken } = await verifyPassword(pw);
+      if (result === 'wrong') {
+        await clearPassword();
+        online.setPassword(null);
+      } else if (stickerToken) {
+        online.setStickerToken(stickerToken);
+      }
+    });
   }, []);
 
   return (
